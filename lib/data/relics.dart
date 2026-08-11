@@ -1,0 +1,165 @@
+import '../engine/core.dart';
+import 'card_build.dart';
+
+RelicDef _r(String id, String name, String desc, Rarity rarity, RelicTrigger t,
+        {int value = 0, String? arg, List<Fx> fx = const []}) =>
+    RelicDef(
+      id: id,
+      name: name,
+      desc: desc,
+      rarity: rarity,
+      trigger: t,
+      value: value,
+      arg: arg,
+      art: 'relic_$id',
+      fx: fx,
+    );
+
+const _bs = RelicTrigger.onBattleStart;
+const _ts = RelicTrigger.onTurnStart;
+const _pas = RelicTrigger.passive;
+
+/// Vessel starting sigils — never appear in the reward pool.
+final kStarterRelics = <RelicDef>[
+  _r('ember_heart', 'Ember Heart', 'At the start of each battle, apply 2 Burn to every foe.',
+      Rarity.starter, _bs, fx: [stAll('burn', 2)]),
+  _r('frost_tear', 'Frozen Tear', 'At the start of each battle, gain 8 Guard.',
+      Rarity.starter, _bs, fx: [blk(8)]),
+  _r('volt_nail', 'Conductor\'s Nail', 'At the start of each battle, gain 1 Energy.',
+      Rarity.starter, _bs, fx: [nrg(1)]),
+  _r('umbra_thread', 'Black Thread', 'At the start of each battle, apply 2 Poison to every foe.',
+      Rarity.starter, _bs, fx: [stAll('poison', 2)]),
+  _r('lumen_shard', 'Shard of Dawn', 'At the start of each battle, gain 1 Ward.',
+      Rarity.starter, _bs, fx: [me('ward', 1)]),
+  _r('broken_hourglass', 'Broken Hourglass', 'At the start of each battle, draw 2 extra frames.',
+      Rarity.starter, _bs, fx: [draw(2)]),
+];
+
+/// The main reward pool.
+final kRelics = <RelicDef>[
+  // --- common ---------------------------------------------------------
+  _r('bone_flute', 'Bone Flute', 'Start each battle with 5 Guard.', Rarity.common, _bs,
+      fx: [blk(5)]),
+  _r('iron_tooth', 'Iron Tooth', 'Start each battle with 1 Strength.', Rarity.common, _bs,
+      fx: [me('strength', 1)]),
+  _r('rusted_ring', 'Rusted Ring', 'Gain 3 Guard at the start of each turn.',
+      Rarity.common, _ts, fx: [blk(3)]),
+  _r('salt_pouch', 'Pouch of Salt', 'Foes begin every battle with 1 Vulnerable.',
+      Rarity.common, _bs, fx: [stAll('vulnerable', 1)]),
+  _r('ash_locket', 'Ash Locket', 'Heal 6 whenever you clear a floor.',
+      Rarity.common, RelicTrigger.onFloor, value: 6),
+  _r('chalk_stub', 'Chalk Stub', 'Resting heals an extra 12 HP.',
+      Rarity.common, RelicTrigger.onRest, value: 12),
+  _r('marrow_die', 'Marrow Die', 'Frame rewards offer 4 choices instead of 3.',
+      Rarity.common, _pas, value: 1),
+  _r('map_fragment', 'Map Fragment', 'Reveals the node types two layers ahead.',
+      Rarity.common, _pas),
+  _r('wolf_sigil', 'Wolf Sigil', 'Deal 15% more damage while below half HP.',
+      Rarity.common, _pas, value: 15),
+  _r('candle_stub', 'Candle Stub', 'Heal 3 at the start of each turn.',
+      Rarity.common, _ts, fx: [heal(3)]),
+  _r('black_feather', 'Black Feather', 'Start each battle with 2 Momentum.',
+      Rarity.common, _bs, fx: [me('momentum', 2)]),
+  _r('wax_seal', 'Wax Seal', 'Shops sell one extra frame.', Rarity.common, _pas),
+
+  // --- uncommon -------------------------------------------------------
+  _r('gilded_mask', 'Gilded Mask', 'Whenever you trigger a Reaction, gain 4 Guard.',
+      Rarity.uncommon, RelicTrigger.onReaction, fx: [blk(4)]),
+  _r('quill_of_names', 'Quill of Names', 'The first Reaction each turn draws you a frame.',
+      Rarity.uncommon, RelicTrigger.onReaction, value: 1),
+  _r('void_pearl', 'Void Pearl', 'Reactions deal 8 additional damage.',
+      Rarity.uncommon, _pas, value: 8),
+  _r('ember_coin', 'Ember Coin', 'Whenever you apply Burn, apply 1 more.',
+      Rarity.uncommon, _pas, value: 1),
+  _r('frozen_rose', 'Frozen Rose', 'Whenever you gain Guard, gain 2 more.',
+      Rarity.uncommon, _pas, value: 2),
+  _r('storm_shard', 'Storm Shard', 'Whenever you apply Shock, apply 1 more.',
+      Rarity.uncommon, _pas, value: 1),
+  _r('shadow_dice', 'Obsidian Dice', 'Heal 5 whenever a foe dies.',
+      Rarity.uncommon, RelicTrigger.onKill, value: 5),
+  _r('dawn_bell', 'Dawn Bell', 'Heal 8 at the start of each battle.',
+      Rarity.uncommon, _bs, fx: [heal(8)]),
+  _r('moth_lantern', 'Moth Lantern', 'Whenever you exhaust a frame, deal 4 damage to a random foe.',
+      Rarity.uncommon, _pas, value: 4),
+  _r('clock_hand', 'Bent Clock Hand', 'At the start of your turn, if your hand is empty, draw 2.',
+      Rarity.uncommon, _ts, value: 2),
+  _r('gear_ring', 'Gear Ring', 'Gain 1 extra Energy on the first turn of each battle.',
+      Rarity.uncommon, _bs, value: 1),
+  _r('seed_of_dawn', 'Seed of Dawn', 'Whenever you heal, gain 2 Guard.',
+      Rarity.uncommon, _pas, value: 2),
+  _r('spine_charm', 'Spine Charm', 'Start each battle with 3 Thorns.',
+      Rarity.uncommon, _bs, fx: [me('thorns', 3)]),
+  _r('bell_fragment', 'Bell Fragment', 'The first foe to act each battle takes 12 damage.',
+      Rarity.uncommon, _bs, value: 12),
+  _r('glacial_lens', 'Glacial Lens', 'Gain 2 Guard bonus for the whole run.',
+      Rarity.uncommon, _bs, fx: [me('guard', 2)]),
+  _r('cinder_dice', 'Cinder Dice', 'Whenever you play 3 frames in a turn, deal 8 to all foes.',
+      Rarity.uncommon, _pas, value: 8),
+  _r('blood_vial', 'Blood Vial', 'Whenever you lose HP to your own frames, gain 4 Guard.',
+      Rarity.uncommon, _pas, value: 4),
+  _r('silver_thread', 'Silver Thread', 'Companions never leave without saying goodbye. Events are kinder.',
+      Rarity.uncommon, _pas),
+  _r('keystone', 'Keystone', 'Elites drop an extra sigil.', Rarity.uncommon, _pas),
+  _r('witness_stone', 'Witness Stone', 'Events reveal one hidden option.', Rarity.uncommon, _pas),
+  _r('scribes_thumb', 'Scribe\'s Thumb', 'Removing a frame at a shop is free once per Act.',
+      Rarity.uncommon, _pas),
+  _r('cracked_lens', 'Cracked Lens', 'You always see the exact damage a foe intends.',
+      Rarity.uncommon, _pas),
+  _r('moth_wing', 'Moth Wing', 'Start each battle with 1 Stealth.', Rarity.uncommon, _bs,
+      fx: [me('stealth', 1)]),
+  _r('thorn_band', 'Thorn Band', 'Gain 2 Thorns at the start of each turn.',
+      Rarity.uncommon, _ts, fx: [me('thorns', 2)]),
+
+  // --- rare -----------------------------------------------------------
+  _r('aeon_sigil', 'Aeon Sigil', 'Gain 1 Energy each turn. Lose 6 max HP.',
+      Rarity.rare, _ts, fx: [nrg(1)]),
+  _r('phoenix_ash', 'Phoenix Ash', 'Once per battle, surviving a lethal blow heals you to 30%.',
+      Rarity.rare, _pas, value: 30),
+  _r('mirror_coin', 'Mirror Coin', 'Once per run, dying instead leaves you at 1 HP.',
+      Rarity.rare, _pas, value: 1),
+  _r('ouroboros_band', 'Ouroboros Band', 'Start each battle with 2 Echo.',
+      Rarity.rare, _bs, fx: [me('echo', 2)]),
+  _r('nail_of_ending', 'Nail of Ending', 'Foes marked with Doom take 25% more damage.',
+      Rarity.rare, _pas, value: 25),
+  _r('hollow_crown', 'Hollow Crown', 'Start each battle with 3 Overcharge.',
+      Rarity.rare, _bs, fx: [me('overcharge', 3)]),
+  _r('sun_nail', 'Sun Nail', 'Lumen damage is increased by 25%.', Rarity.rare, _pas, value: 25),
+  _r('last_ember', 'Last Ember', 'Heal 5 for every foe slain when a battle ends.',
+      Rarity.rare, RelicTrigger.onBattleWin, value: 5),
+  _r('crown_shard', 'Crown Shard', 'Elite and Boss kills grant +4 max HP permanently.',
+      Rarity.rare, RelicTrigger.onBattleWin, value: 4),
+  _r('null_marble', 'Null Marble', 'Curses in your deck no longer do anything.',
+      Rarity.rare, _pas),
+  _r('gilded_finger', 'Gilded Finger', 'Playing 4+ frames in a turn grants 1 Energy next turn.',
+      Rarity.rare, _pas, value: 1),
+  _r('mercy_blade', 'Mercy Blade', 'Every act of mercy heals you 12 and is remembered.',
+      Rarity.rare, _pas, value: 12),
+  _r('echo_shell', 'Echo Shell', 'The first frame you play each turn resolves twice.',
+      Rarity.rare, _bs, fx: [me('echoloop', 1)]),
+  _r('bone_crown', 'Bone Crown', 'Start each battle with 2 Strength and 2 Guard bonus.',
+      Rarity.rare, _bs, fx: [me('strength', 2), me('guard', 2)]),
+  _r('storm_bottle', 'Bottled Storm', 'Deal 20 damage to a random foe at the start of each turn.',
+      Rarity.rare, _ts, fx: [Fx(FxKind.damage, value: 20, target: FxTarget.randomEnemy)]),
+  _r('glass_eye', 'Glass Eye', 'Gain 2 Strength at the start of each battle.',
+      Rarity.rare, _bs, fx: [me('strength', 2)]),
+  _r('hollow_key', 'Hollow Key', 'Opens doors that were never drawn. Unlocks hidden events.',
+      Rarity.rare, _pas),
+  _r('final_page', 'The Final Page', 'You are holding the last page of the original story.',
+      Rarity.mythic, _pas),
+  _r('ouroboros_true', 'Unbroken Ouroboros', 'Gain 2 Energy each turn. You cannot heal.',
+      Rarity.mythic, _ts, fx: [nrg(2)]),
+];
+
+final Map<String, RelicDef> kRelicById = {
+  for (final r in [...kRelics, ...kStarterRelics]) r.id: r
+};
+
+RelicDef relicDef(String id) => kRelicById[id] ?? kRelics.first;
+
+int relicWeight(RelicDef r, int act) => switch (r.rarity) {
+      Rarity.common => 50,
+      Rarity.uncommon => 34 + act * 2,
+      Rarity.rare => 12 + act * 4,
+      Rarity.mythic => act >= 2 ? 4 : 0,
+      _ => 0,
+    };

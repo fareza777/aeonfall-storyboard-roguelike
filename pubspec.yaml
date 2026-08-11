@@ -1,0 +1,31 @@
+name: aeonfall
+description: "AEONFALL - a fully illustrated storyboard roguelite."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  audioplayers: ^6.1.0
+  shared_preferences: ^2.3.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/img/
+    - assets/audio/
+  fonts:
+    - family: Cinzel
+      fonts:
+        - asset: assets/fonts/Cinzel.ttf
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter.ttf
