@@ -280,6 +280,7 @@ class FrameCard extends StatelessWidget {
     this.playable = true,
     this.selected = false,
     this.onTap,
+    this.onLongPress,
     this.showCost = true,
   });
 
@@ -288,6 +289,9 @@ class FrameCard extends StatelessWidget {
   final bool playable;
   final bool selected;
   final VoidCallback? onTap;
+
+  /// Press and hold for a large, fully legible reading of the frame.
+  final VoidCallback? onLongPress;
   final bool showCost;
 
   @override
@@ -298,6 +302,7 @@ class FrameCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 140),
         width: width,

@@ -789,7 +789,10 @@ class _BattleScreenState extends State<BattleScreen> with TickerProviderStateMix
               if (lethal)
                 Text('LETHAL', style: Ae.label(9.5, c: Ae.good))
               else if (react != null)
-                Text(kReactions[react]!.name,
+                Text(
+                    Game.i.meta.colourblind
+                        ? '${c.def.elem.label.toUpperCase()} · ${kReactions[react]!.name}'
+                        : kReactions[react]!.name,
                     style: Ae.label(9, c: kReactions[react]!.color)),
             ],
           ),
@@ -1579,7 +1582,10 @@ class _BattleScreenState extends State<BattleScreen> with TickerProviderStateMix
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Flexible(
-          child: Text('${best.key.glyph} CINEMATIC ',
+          child: Text(
+              Game.i.meta.colourblind
+                  ? '${best.key.glyph} ${best.key.label.toUpperCase()} CINEMATIC '
+                  : '${best.key.glyph} CINEMATIC ',
               overflow: TextOverflow.ellipsis,
               style: Ae.label(12, c: best.key.color)),
         ),
@@ -1594,6 +1600,76 @@ class _BattleScreenState extends State<BattleScreen> with TickerProviderStateMix
             ),
           ),
       ],
+    );
+  }
+
+  /// Press and hold a frame for a large reading of it, with every keyword it
+  /// uses spelled out. A 140px card in a row of seven is not a document.
+  void _zoomCard(CardInst c) {
+    Audio.i.sfx('tap', volume: .4);
+    final tint = c.def.elem == Elem.none ? Ae.gold : c.def.elem.color;
+    // Only the conditions this frame actually mentions, so the sheet is a
+    // reading of this card rather than a glossary dump.
+    final keys = kStatus.keys
+        .where((k) => c.text.toLowerCase().contains(kStatus[k]!.name.toLowerCase()))
+        .toList();
+
+    aeSheet(
+      context,
+      title: c.name,
+      subtitle: '${c.def.elem.label} · ${c.def.type.name.toUpperCase()} · '
+          '${c.cost} Aether',
+      accent: tint,
+      heightFactor: .80,
+      builder: (_) => ListView(
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 28),
+        children: [
+          Center(child: FrameCard(card: c, width: 200)),
+          const SizedBox(height: 20),
+          Text(c.text, style: Ae.body(19, h: 1.55)),
+          if (c.def.exhaust || c.def.retain || c.def.innate) ...[
+            const SizedBox(height: 14),
+            Text(
+              [
+                if (c.def.innate) 'INNATE — always in your opening hand.',
+                if (c.def.retain) 'RETAIN — stays in hand between turns.',
+                if (c.def.exhaust) 'EXHAUST — gone for the rest of the fight.',
+              ].join('\n'),
+              style: Ae.label(12.5, c: Ae.goldSoft),
+            ),
+          ],
+          if (keys.isNotEmpty) ...[
+            const SizedBox(height: 22),
+            const AeRule(),
+            const SizedBox(height: 14),
+            Text('WHAT THOSE WORDS MEAN', style: Ae.label(12, c: Ae.dim)),
+            const SizedBox(height: 10),
+            for (final k in keys)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(kStatus[k]!.glyph,
+                        style: TextStyle(fontSize: 17, color: kStatus[k]!.color)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(kStatus[k]!.name.toUpperCase(),
+                              style: Ae.label(12.5, c: kStatus[k]!.color)),
+                          const SizedBox(height: 2),
+                          Text(kStatus[k]!.desc, style: Ae.body(15, c: Ae.bone, h: 1.4)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -1623,6 +1699,7 @@ class _BattleScreenState extends State<BattleScreen> with TickerProviderStateMix
                       playable: b.canPlay(c),
                       selected: _selected == c,
                       onTap: () => _tapCard(c),
+                      onLongPress: () => _zoomCard(c),
                     );
                   },
                 ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../audio.dart';
+import '../data/cards.dart';
+import '../data/relics.dart';
 import '../data/vessels.dart';
 import '../engine/core.dart';
 import '../engine/rng.dart';
@@ -39,6 +41,63 @@ class _VesselSelectScreenState extends State<VesselSelectScreen> {
   }
 
   bool _isLocked(VesselDef v) => !Game.i.meta.vessels.contains(v.id);
+
+  /// The Vessel's opening hand, laid out before you choose it. Picking a
+  /// Vessel used to be a guess made from one paragraph of flavour.
+  void _previewDeck(VesselDef v) {
+    Audio.i.sfx('draw');
+    final deck = <CardInst>[];
+    v.deck.forEach((id, n) {
+      for (var i = 0; i < n; i++) {
+        deck.add(CardInst(cardDef(id)));
+      }
+    });
+    deck.sort((a, b) => a.def.name.compareTo(b.def.name));
+    final relic = relicDef(v.relic);
+
+    aeSheet(
+      context,
+      title: '${v.name.toUpperCase()} — STARTING DECK',
+      subtitle: '${deck.length} frames · ${v.elem.label}',
+      accent: v.elem.color,
+      heightFactor: .86,
+      builder: (_) => ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+        children: [
+          AePanel(
+            border: v.elem.color,
+            child: Row(children: [
+              SizedBox(width: 48, height: 48, child: Art(relic.artKey())),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(relic.name.toUpperCase(), style: Ae.label(13)),
+                    const SizedBox(height: 3),
+                    Text(relic.desc, style: Ae.body(14.5, c: Ae.dim, h: 1.4)),
+                  ],
+                ),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 14),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              childAspectRatio: 1 / 1.52,
+            ),
+            itemCount: deck.length,
+            itemBuilder: (_, i) => FrameCard(card: deck[i], width: 108),
+          ),
+        ],
+      ),
+    );
+  }
 
   void _begin(VesselDef v) {
     Audio.i.sfx('confirm');
@@ -193,7 +252,50 @@ class _VesselSelectScreenState extends State<VesselSelectScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(width: 10),
+                    GestureDetector(
+                      onTap: () {
+                        Audio.i.sfx('tap');
+                        setState(() => _seed = dailySeed());
+                      },
+                      child: AePanel(
+                        border: _seed == dailySeed() ? Ae.gold : Ae.panelHi,
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('TODAY', style: Ae.label(11)),
+                            const SizedBox(height: 3),
+                            Text('SAME FOR ALL',
+                                style: Ae.body(13, c: Ae.goldSoft, w: 700)),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
+                ),
+              ),
+              // The deck you are about to be handed, before you commit to it.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(22, 0, 22, 10),
+                child: GestureDetector(
+                  onTap: () => _previewDeck(v),
+                  child: AePanel(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                    child: Row(children: [
+                      Text('◈', style: TextStyle(fontSize: 17, color: v.elem.color)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                            'See the ${v.deck.values.fold(0, (a, b) => a + b)} '
+                            'frames you start with',
+                            style: Ae.body(15, c: Ae.bone)),
+                      ),
+                      Text('LOOK', style: Ae.label(12, c: Ae.gold)),
+                    ]),
+                  ),
                 ),
               ),
               Padding(

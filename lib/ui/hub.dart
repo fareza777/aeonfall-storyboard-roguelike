@@ -329,8 +329,8 @@ class _HubScreenState extends State<HubScreen> {
               const AeRule(),
               const SizedBox(height: 16),
               _accessRow(
-                'ELEMENT SHAPES',
-                'Give each element a distinct glyph as well as a colour.',
+                'ELEMENT NAMES',
+                'Spell out the element in words wherever colour alone carries it.',
                 m.colourblind,
                 () => save(() => m.colourblind = !m.colourblind),
               ),

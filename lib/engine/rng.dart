@@ -78,3 +78,13 @@ String seedToWords(int seed) {
   final c = (seed % 1000).toString().padLeft(3, '0');
   return '$a-$b-$c';
 }
+
+/// The seed everybody gets today.
+///
+/// Derived from the calendar date alone, so two players who pick TODAY are
+/// walking the same map, meeting the same foes, and finding the same
+/// draughts — which is the only way comparing runs means anything.
+int dailySeed([DateTime? now]) {
+  final d = now ?? DateTime.now();
+  return (d.year * 10000 + d.month * 100 + d.day) & 0xFFFFFF;
+}
