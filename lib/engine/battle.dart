@@ -264,6 +264,7 @@ class Battle {
   // ------------------------------------------------------- turn flow
   void _beginTurn({bool first = false}) {
     turn++;
+    run.turnsTaken++;
     playedThisTurn = 0;
     reactionsThisTurn = 0;
     elemsThisTurn.clear();
@@ -805,6 +806,7 @@ class Battle {
     if (ended || inFoePhase || !aidAvailable(companionId)) return false;
     final aid = aidFor(companionId)!;
     aidsUsed.add(companionId);
+    run.aidsCalled++;
     _say('${_short(aid.name, 18)} — ${_short(companionById(companionId).name, 12)}',
         kind: 'cinematic');
     _tally = 0;
@@ -828,6 +830,7 @@ class Battle {
     if (ended || inFoePhase) return false;
     if (!run.potions.remove(potionId)) return false;
     final p = potionDef(potionId);
+    run.draughtsDrunk++;
     _say('${_short(p.name, 18)} — drunk', kind: 'card');
     _tally = 0;
     _hits.clear();
@@ -872,6 +875,7 @@ class Battle {
       if (elemsThisTurn.where((x) => x == e).length >= asc.cinematicFrames) {
         cinematicUsedThisTurn = true;
         cinematicsFired++;
+        run.cinematics++;
         elemsThisTurn.clear(); // meter empties the instant it triggers
         if (deferCinematics) {
           pendingCinematic = e;
@@ -1302,6 +1306,9 @@ class Battle {
     if (src.isPlayer && !dst.isPlayer) {
       _tally += amount;
       _hits[dst] = (_hits[dst] ?? 0) + amount;
+      run.damageDealt += amount;
+    } else if (dst.isPlayer) {
+      run.damageTaken += amount;
     }
     _pop(dst, '-$amount', 'damage');
 
@@ -1382,6 +1389,9 @@ class Battle {
     }
 
     f.hp = 0;
+    run.foesFelled++;
+    if (f.def!.tier == 1) run.elitesFelled++;
+    if (f.def!.tier >= 2) run.bossesFelled++;
     _say('${_short(f.displayName)} is erased', kind: 'death');
 
     // Two foes cost you something for killing them, so "focus it down" is not
@@ -1428,6 +1438,7 @@ class Battle {
   void _reaction(String id, Combatant t) {
     reactionsThisTurn++;
     reactionsFired++;
+    run.reactions++;
     final rd = kReactions[id]!;
     popups.add(Popup(foes.indexOf(t), rd.name, 'reaction'));
 

@@ -146,6 +146,8 @@ class Game extends ChangeNotifier {
     map.available = List<int>.from(node.next);
     run!.floor = node.layer;
     run!.totalFloors++;
+    // One reading per floor — the run's pulse line on the summary screen.
+    run!.hpTrail.add(run!.hp);
     if (run!.relics.contains('ash_locket')) run!.heal(6);
     if (meta.deepestAct < run!.act) {
       meta.deepestAct = run!.act;
@@ -169,9 +171,14 @@ class Game extends ChangeNotifier {
 
   void finishRun(String endingId, {required bool won}) {
     meta.endings.add(endingId);
+    meta.recordRun(run!,
+        won: won,
+        ending: endingId,
+        finishedAt: DateTime.now().millisecondsSinceEpoch);
     if (won) meta.wins++;
     meta.shards += 40 + run!.totalFloors * 3 + (won ? 120 : 0);
     if (won && meta.ascension < 20) meta.ascension++;
+    lastRun = run;
     run = null;
     director = null;
     battle = null;
@@ -180,13 +187,20 @@ class Game extends ChangeNotifier {
   }
 
   void die() {
+    meta.recordRun(run!,
+        won: false, finishedAt: DateTime.now().millisecondsSinceEpoch);
     meta.shards += 20 + run!.totalFloors * 2;
+    lastRun = run;
     run = null;
     director = null;
     battle = null;
     save();
     notifyListeners();
   }
+
+  /// The run that just ended. `finishRun` and `die` clear `run`, but the
+  /// result screen still has to be able to show what happened.
+  RunState? lastRun;
 
   void touch() => notifyListeners();
 }

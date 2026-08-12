@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 // Flutter's own `Intent` clashes with the battle engine's enemy Intent.
 import 'package:flutter/material.dart' hide Intent;
+import 'package:flutter/services.dart';
 
 import '../audio.dart';
 import '../data/companion_aid.dart';
@@ -69,6 +70,12 @@ class BattleScreen extends StatefulWidget {
 
 class _BattleScreenState extends State<BattleScreen> with TickerProviderStateMixin {
   CardInst? _selected;
+
+  /// Impact shake. Driven directly rather than through an implicit animation
+  /// so a hit lands on the frame it happens, not a beat later.
+  late final AnimationController _shake = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 260));
+
   final List<_Float> _floats = [];
   int _floatId = 0;
   bool _busy = false;
@@ -103,6 +110,12 @@ class _BattleScreenState extends State<BattleScreen> with TickerProviderStateMix
       Game.i.saveMeta();
     }
     WidgetsBinding.instance.addPostFrameCallback((_) => _drain());
+  }
+
+  @override
+  void dispose() {
+    _shake.dispose();
+    super.dispose();
   }
 
   void _tutNext() {
@@ -146,6 +159,46 @@ class _BattleScreenState extends State<BattleScreen> with TickerProviderStateMix
   }
 
   // ---------------------------------------------------------- feedback
+  /// Wraps the whole battle in the impact offset. Off entirely when the
+  /// player has asked for reduced motion, so it costs nothing.
+  Widget _shaken(Widget child) {
+    if (Game.i.meta.reducedMotion) return child;
+    return AnimatedBuilder(
+      animation: _shake,
+      builder: (_, inner) {
+        if (_shake.value == 0) return inner!;
+        // Decaying wobble rather than a single lurch — reads as impact, not
+        // as a dropped frame.
+        final decay = 1 - _shake.value;
+        final dx = math.sin(_shake.value * math.pi * 7) * 9 * decay;
+        final dy = math.cos(_shake.value * math.pi * 5) * 5 * decay;
+        return Transform.translate(offset: Offset(dx, dy), child: inner);
+      },
+      child: child,
+    );
+  }
+
+  /// One place decides what a hit feels like, so shake and buzz can never
+  /// disagree with each other or with the player's settings.
+  void _kick(String kind, {int amount = 0}) {
+    final m = Game.i.meta;
+    final heavy = kind == 'cinematic' || kind == 'reaction' || amount >= 14;
+    if (!m.reducedMotion && (heavy || amount >= 6)) {
+      _shake
+        ..stop()
+        ..value = 0
+        ..animateTo(1, curve: Curves.easeOut);
+    }
+    if (!m.haptics) return;
+    if (kind == 'cinematic') {
+      HapticFeedback.heavyImpact();
+    } else if (kind == 'reaction' || amount >= 14) {
+      HapticFeedback.mediumImpact();
+    } else if (amount > 0) {
+      HapticFeedback.selectionClick();
+    }
+  }
+
   void _drain() {
     if (!mounted) return;
     final pops = List<Popup>.from(b.popups);
@@ -155,6 +208,13 @@ class _BattleScreenState extends State<BattleScreen> with TickerProviderStateMix
       final f = _Float(_floatId++, p.targetIdx, p.text, p.kind);
       _floats.add(f);
       Audio.i.forPopup(p.kind);
+      // The player taking damage is the beat worth feeling; foes taking it is
+      // just information.
+      if (p.kind == 'damage' && p.targetIdx == -1) {
+        _kick('damage', amount: int.tryParse(p.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0);
+      } else if (p.kind == 'reaction') {
+        _kick('reaction');
+      }
       if (p.kind == 'reaction') {
         _banner = p.text;
         Timer(const Duration(milliseconds: 1300), () {
@@ -363,13 +423,16 @@ class _BattleScreenState extends State<BattleScreen> with TickerProviderStateMix
       _phase = 'CINEMATIC · ${Game.i.run!.vessel.cinematicName}';
     });
     Audio.i.sfx('cinematic', volume: .8);
-    await Future<void>.delayed(const Duration(milliseconds: 550));
+    _kick('cinematic');
+    await Future<void>.delayed(Duration(
+        milliseconds: Game.i.meta.reducedMotion ? 220 : 550));
     if (!mounted) return;
 
     b.resolveCinematic();
     _drain();
     setState(() {});
-    await Future<void>.delayed(const Duration(milliseconds: 750));
+    await Future<void>.delayed(Duration(
+        milliseconds: Game.i.meta.reducedMotion ? 300 : 750));
     if (!mounted) return;
 
     setState(() {
@@ -476,7 +539,7 @@ class _BattleScreenState extends State<BattleScreen> with TickerProviderStateMix
     return PopScope(
       canPop: false,
       child: Scaffold(
-        body: Stack(
+        body: _shaken(Stack(
           fit: StackFit.expand,
           children: [
             Art(_bg()),
@@ -592,7 +655,7 @@ class _BattleScreenState extends State<BattleScreen> with TickerProviderStateMix
                 ),
               ),
           ],
-        ),
+        )),
       ),
     );
   }

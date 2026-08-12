@@ -23,6 +23,12 @@ try:
 except ImportError:
     pass
 
+try:
+    from manifest_v2 import V2
+    ASSETS = ASSETS + V2
+except ImportError:
+    pass
+
 TOKEN = os.environ.get("REPLICATE_API_TOKEN", "").strip()
 if not TOKEN:
     sys.exit("REPLICATE_API_TOKEN not set")
@@ -42,6 +48,7 @@ MODEL_PATH = {
 SIZE = {
     "brand": 1280, "biome": 1280, "event": 1280, "boss": 900, "elite": 800,
     "vessel": 900, "enemy": 640, "card": 512, "relic": 256, "crest": 256,
+    "potion": 256,
 }
 
 _lock = threading.Lock()

@@ -71,6 +71,52 @@ class RunState {
   int cruelty = 0;
   String? pendingTwist;
 
+  // ------------------------------------------------------- run record
+  /// Counted as the run happens so the end-of-run summary is a record rather
+  /// than a reconstruction.
+  int foesFelled = 0;
+  int elitesFelled = 0;
+  int bossesFelled = 0;
+  int damageDealt = 0;
+  int damageTaken = 0;
+  int cinematics = 0;
+  int reactions = 0;
+  int draughtsDrunk = 0;
+  int aidsCalled = 0;
+  int turnsTaken = 0;
+
+  /// One entry per floor: HP on arrival. Drawn as the run's pulse line.
+  List<int> hpTrail = [];
+
+  Map<String, dynamic> get record => {
+        'foes': foesFelled,
+        'elites': elitesFelled,
+        'bosses': bossesFelled,
+        'dealt': damageDealt,
+        'taken': damageTaken,
+        'cine': cinematics,
+        'react': reactions,
+        'draughts': draughtsDrunk,
+        'aids': aidsCalled,
+        'turns': turnsTaken,
+        'trail': hpTrail,
+      };
+
+  void loadRecord(Map<String, dynamic>? j) {
+    if (j == null) return;
+    foesFelled = j['foes'] ?? 0;
+    elitesFelled = j['elites'] ?? 0;
+    bossesFelled = j['bosses'] ?? 0;
+    damageDealt = j['dealt'] ?? 0;
+    damageTaken = j['taken'] ?? 0;
+    cinematics = j['cine'] ?? 0;
+    reactions = j['react'] ?? 0;
+    draughtsDrunk = j['draughts'] ?? 0;
+    aidsCalled = j['aids'] ?? 0;
+    turnsTaken = j['turns'] ?? 0;
+    hpTrail = List<int>.from(j['trail'] ?? []);
+  }
+
   Elem get dominantElement {
     final counts = <Elem, int>{};
     for (final c in deck) {
@@ -132,6 +178,7 @@ class RunState {
         'mercy': mercy,
         'cruelty': cruelty,
         'twist': pendingTwist,
+        'record': record,
       };
 
   static RunState fromJson(Map<String, dynamic> j) {
@@ -162,6 +209,7 @@ class RunState {
     r.mercy = j['mercy'] ?? 0;
     r.cruelty = j['cruelty'] ?? 0;
     r.pendingTwist = j['twist'];
+    r.loadRecord(j['record'] as Map<String, dynamic>?);
     return r;
   }
 }
@@ -183,6 +231,49 @@ class MetaState {
   bool music = true;
   bool sfx = true;
 
+  // ------------------------------------------------------- preferences
+  /// Multiplies every text size in the game. Some people need bigger type and
+  /// some people want more on screen; both are reasonable.
+  double textScale = 1.0;
+
+  /// Elements get a distinct shape as well as a colour, for players who
+  /// cannot rely on the colour alone.
+  bool colourblind = false;
+
+  /// Cuts shake, flourishes and the slower beats for anyone who finds them
+  /// uncomfortable or simply wants to play faster.
+  bool reducedMotion = false;
+  bool haptics = true;
+
+  // ----------------------------------------------------------- history
+  /// The last thirty runs, newest first. Kept small on purpose — this is a
+  /// record to look back on, not an analytics warehouse.
+  List<Map<String, dynamic>> history = [];
+
+  void recordRun(RunState r, {required bool won, String? ending, int? finishedAt}) {
+    history.insert(0, {
+      'vessel': r.vesselId,
+      'asc': r.ascension,
+      'seed': r.seed,
+      'act': r.act,
+      'floors': r.totalFloors,
+      'won': won,
+      'ending': ending,
+      'chron': r.chronicleId,
+      'deck': r.deck.length,
+      'relics': r.relics.length,
+      'pages': r.pages.length,
+      'at': finishedAt ?? 0,
+      'record': r.record,
+    });
+    if (history.length > 30) history.removeRange(30, history.length);
+  }
+
+  int runsWith(String vesselId) =>
+      history.where((h) => h['vessel'] == vesselId).length;
+  int winsWith(String vesselId) =>
+      history.where((h) => h['vessel'] == vesselId && h['won'] == true).length;
+
   int get bonusHp => upgrades.contains('vigor') ? 10 : 0;
   int get bonusGold => upgrades.contains('purse') ? 60 : 0;
   bool get extraRelic => upgrades.contains('sigil');
@@ -203,6 +294,11 @@ class MetaState {
         'tutorial': tutorialDone,
         'music': music,
         'sfx': sfx,
+        'textScale': textScale,
+        'colourblind': colourblind,
+        'reducedMotion': reducedMotion,
+        'haptics': haptics,
+        'history': history,
       };
 
   static MetaState fromJson(Map<String, dynamic> j) {
@@ -221,6 +317,13 @@ class MetaState {
     m.tutorialDone = j['tutorial'] ?? false;
     m.music = j['music'] ?? true;
     m.sfx = j['sfx'] ?? true;
+    m.textScale = (j['textScale'] as num?)?.toDouble() ?? 1.0;
+    m.colourblind = j['colourblind'] ?? false;
+    m.reducedMotion = j['reducedMotion'] ?? false;
+    m.haptics = j['haptics'] ?? true;
+    m.history = ((j['history'] as List?) ?? [])
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
     return m;
   }
 

@@ -7,6 +7,7 @@ import '../data/narrative_model.dart';
 import '../engine/rng.dart';
 import '../game.dart';
 import '../theme.dart';
+import 'run_summary.dart';
 import 'widgets.dart';
 
 /// The top of the tower. Four doors, and the run decides which one means what.
@@ -194,6 +195,13 @@ class _ResultScreenState extends State<ResultScreen> {
                       Prose(e.body, size: 17),
                     ],
                     const SizedBox(height: 26),
+                    if (Game.i.lastRun != null) ...[
+                      RunSummary(
+                        run: Game.i.lastRun!,
+                        won: widget.endingId != null,
+                      ),
+                      const SizedBox(height: 26),
+                    ],
                     AePanel(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

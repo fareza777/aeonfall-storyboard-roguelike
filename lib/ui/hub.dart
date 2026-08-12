@@ -8,6 +8,7 @@ import '../theme.dart';
 import 'codex.dart';
 import 'how_to_play.dart';
 import 'map_screen.dart';
+import 'run_summary.dart';
 import 'trailer.dart';
 import 'vessel_select.dart';
 import 'widgets.dart';
@@ -218,8 +219,10 @@ class _HubScreenState extends State<HubScreen> {
         ]),
       );
 
-  Widget _settings(m) => Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+  Widget _settings(m) => Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 12,
+        runSpacing: 10,
         children: [
           _toggle('MUSIC', m.music, () {
             setState(() => m.music = !m.music);
@@ -227,14 +230,156 @@ class _HubScreenState extends State<HubScreen> {
             if (m.music) Audio.i.music('hub');
             Game.i.saveMeta();
           }),
-          const SizedBox(width: 12),
           _toggle('SOUND', m.sfx, () {
             setState(() => m.sfx = !m.sfx);
             Audio.i.sfxOn = m.sfx;
             Audio.i.sfx('tap');
             Game.i.saveMeta();
           }),
+          GestureDetector(
+            onTap: () => showRunHistory(context),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+              decoration: BoxDecoration(
+                color: Ae.ink2,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Ae.panelHi, width: 1.4),
+              ),
+              child: Text('THE DRAFTS', style: Ae.label(13, c: Ae.bone)),
+            ),
+          ),
+          GestureDetector(
+            onTap: _openAccess,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+              decoration: BoxDecoration(
+                color: Ae.ink2,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Ae.panelHi, width: 1.4),
+              ),
+              child: Text('READABILITY', style: Ae.label(13, c: Ae.bone)),
+            ),
+          ),
         ],
+      );
+
+  /// Text size, colour-blind element shapes, motion and haptics. Every one of
+  /// these is somebody's reason for being able to play at all.
+  void _openAccess() {
+    Audio.i.sfx('tap');
+    final m = Game.i.meta;
+    aeSheet(
+      context,
+      title: 'READABILITY',
+      subtitle: 'Applies everywhere, immediately',
+      heightFactor: .70,
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (_, setSheet) {
+          void save(VoidCallback f) {
+            setSheet(f);
+            setState(f);
+            Game.i.saveMeta();
+          }
+
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(20, 6, 20, 26),
+            children: [
+              Text('TEXT SIZE', style: Ae.label(12, c: Ae.dim)),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  for (final s in const [0.9, 1.0, 1.15, 1.3])
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: GestureDetector(
+                          onTap: () => save(() => m.textScale = s),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: m.textScale == s
+                                  ? Ae.gold.withValues(alpha: .18)
+                                  : Ae.ink2,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                  color: m.textScale == s ? Ae.gold : Ae.panelHi,
+                                  width: 1.4),
+                            ),
+                            child: Text(
+                              switch (s) {
+                                0.9 => 'SMALL',
+                                1.0 => 'NORMAL',
+                                1.15 => 'LARGE',
+                                _ => 'LARGEST',
+                              },
+                              style: Ae.label(11.5,
+                                  c: m.textScale == s ? Ae.bone : Ae.dim),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text('The quick brown fox jumps over the lazy dog.',
+                  style: Ae.body(16 * m.textScale, h: 1.5)),
+              const SizedBox(height: 20),
+              const AeRule(),
+              const SizedBox(height: 16),
+              _accessRow(
+                'ELEMENT SHAPES',
+                'Give each element a distinct glyph as well as a colour.',
+                m.colourblind,
+                () => save(() => m.colourblind = !m.colourblind),
+              ),
+              _accessRow(
+                'REDUCED MOTION',
+                'Cut screen shake and flourishes. The fight plays faster.',
+                m.reducedMotion,
+                () => save(() => m.reducedMotion = !m.reducedMotion),
+              ),
+              _accessRow(
+                'HAPTICS',
+                'A short buzz on heavy damage, Reactions and Cinematics.',
+                m.haptics,
+                () => save(() => m.haptics = !m.haptics),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _accessRow(String title, String desc, bool on, VoidCallback tap) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: GestureDetector(
+          onTap: tap,
+          child: AePanel(
+            border: on ? Ae.gold : Ae.panelHi,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: Ae.label(13, c: on ? Ae.bone : Ae.dim)),
+                      const SizedBox(height: 3),
+                      Text(desc, style: Ae.body(14, c: Ae.dim, h: 1.35)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(on ? 'ON' : 'OFF',
+                    style: Ae.label(13, c: on ? Ae.gold : Ae.dim)),
+              ],
+            ),
+          ),
+        ),
       );
 
   Widget _toggle(String label, bool on, VoidCallback tap) => GestureDetector(

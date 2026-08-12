@@ -60,13 +60,21 @@ class _AeonfallAppState extends State<AeonfallApp> with WidgetsBindingObserver {
         debugShowCheckedModeBanner: false,
         theme: Ae.theme(),
         navigatorObservers: [routeObserver],
-        builder: (context, child) => MediaQuery.withClampedTextScaling(
-          minScaleFactor: 1.0,
-          maxScaleFactor: 1.25,
-          child: AnimatedBuilder(
-            animation: Game.i,
-            builder: (_, __) => child ?? const SizedBox.shrink(),
-          ),
+        builder: (context, child) => AnimatedBuilder(
+          animation: Game.i,
+          builder: (_, __) {
+            // The player's own text-size choice multiplies whatever the system
+            // asks for, then the whole thing is clamped so no layout can be
+            // driven off a cliff.
+            final chosen = Game.i.meta.textScale;
+            final system = MediaQuery.textScalerOf(context).scale(1);
+            final factor = (system * chosen).clamp(0.85, 1.6);
+            return MediaQuery(
+              data: MediaQuery.of(context)
+                  .copyWith(textScaler: TextScaler.linear(factor)),
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
         ),
         home: const SplashScreen(),
       );
