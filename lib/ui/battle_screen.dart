@@ -5,6 +5,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart' hide Intent;
 
 import '../audio.dart';
+import '../data/companion_aid.dart';
+import '../data/companions.dart';
 import '../data/potions.dart';
 import '../data/relics_b.dart';
 import '../engine/battle.dart';
@@ -1260,6 +1262,7 @@ class _BattleScreenState extends State<BattleScreen> with TickerProviderStateMix
           // is left, so a fourth slot can never push the row off the screen.
           Row(
             children: [
+              _aidBar(),
               Expanded(child: _comboMeter()),
               const SizedBox(width: 8),
               _potionBelt(),
@@ -1268,6 +1271,92 @@ class _BattleScreenState extends State<BattleScreen> with TickerProviderStateMix
         ],
       ),
     );
+  }
+
+  /// Whoever walks with you, and whether they still have their one action
+  /// left. Empty when you travel alone, so it costs nothing on screen.
+  Widget _aidBar() {
+    final ids = Game.i.run!.companions;
+    if (ids.isEmpty) return const SizedBox.shrink();
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final id in ids)
+          Padding(
+            padding: const EdgeInsets.only(right: 5),
+            child: _aidCrest(id),
+          ),
+      ],
+    );
+  }
+
+  Widget _aidCrest(String id) {
+    final c = companionById(id);
+    final ready = b.aidAvailable(id);
+    return GestureDetector(
+      onTap: ready ? () => _openAid(id) : null,
+      child: Opacity(
+        opacity: ready ? 1 : .34,
+        child: Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: ready ? Ae.gold : Ae.panelHi, width: 1.6),
+            boxShadow: ready
+                ? [BoxShadow(color: Ae.gold.withValues(alpha: .40), blurRadius: 8)]
+                : null,
+          ),
+          child: ClipOval(child: Art(c.art)),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openAid(String id) async {
+    if (_busy) return;
+    final c = companionById(id);
+    final aid = aidFor(id);
+    if (aid == null) return;
+    var call = false;
+    await aeSheet(
+      context,
+      title: aid.name,
+      subtitle: c.name,
+      accent: Ae.gold,
+      heightFactor: .56,
+      builder: (sheetCtx) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Prose(aid.line, size: 17),
+          const SizedBox(height: 14),
+          Text(aid.desc, style: Ae.body(18, h: 1.5)),
+          const SizedBox(height: 8),
+          Text('ONCE PER BATTLE · COSTS NO AETHER', style: Ae.label(11, c: Ae.dim)),
+          const SizedBox(height: 20),
+          AeButton(
+            label: 'CALL ON THEM',
+            big: true,
+            onTap: () {
+              call = true;
+              Navigator.of(sheetCtx).pop();
+            },
+          ),
+          const SizedBox(height: 10),
+          AeButton(
+            label: 'NOT YET',
+            color: Ae.dim,
+            onTap: () => Navigator.of(sheetCtx).pop(),
+          ),
+        ],
+      ),
+    );
+    if (!call || !mounted) return;
+    Audio.i.sfx('cinematic', volume: .6);
+    setState(() => b.useAid(id));
+    _drain();
+    _checkEnd();
   }
 
   /// The draught belt. Always shows every slot, including the empty ones, so

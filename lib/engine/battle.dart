@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import '../data/ascension.dart';
 import '../data/cards.dart';
+import '../data/companion_aid.dart';
+import '../data/companions.dart';
 import '../data/potions.dart';
 import '../data/relics.dart';
 import '../data/vessels.dart';
@@ -785,6 +787,38 @@ class Battle {
 
     _checkCinematic();
     _checkEnd();
+  }
+
+  /// Companions who have already been called on this fight.
+  final Set<String> aidsUsed = {};
+
+  bool aidAvailable(String companionId) =>
+      run.companions.contains(companionId) &&
+      !aidsUsed.contains(companionId) &&
+      aidFor(companionId) != null &&
+      // A companion who has turned on you does not answer.
+      !(companionId == run.betrayerId && run.betrayalActed == 2);
+
+  /// Call on a companion. Once per fight, free, and never a played frame — an
+  /// Aid is the lever you pull when the forecast says you are about to die.
+  bool useAid(String companionId) {
+    if (ended || inFoePhase || !aidAvailable(companionId)) return false;
+    final aid = aidFor(companionId)!;
+    aidsUsed.add(companionId);
+    _say('${_short(aid.name, 18)} — ${_short(companionById(companionId).name, 12)}',
+        kind: 'cinematic');
+    _tally = 0;
+    _hits.clear();
+    _applyFxList(aid.fx, null, source: aid.name);
+    if (_hits.isNotEmpty) {
+      _say(
+          _hits.length == 1
+              ? '→ ${_short(_hits.keys.first.displayName)} $_tally'
+              : '→ ${_hits.length} foes $_tally',
+          kind: 'cinematic');
+    }
+    _checkEnd();
+    return true;
   }
 
   /// Drink a draught from the belt. Free — it costs no Aether and does not
