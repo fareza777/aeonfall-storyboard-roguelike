@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../audio.dart';
+import '../data/potions.dart';
 import '../data/relics.dart';
 import '../engine/core.dart';
 import '../engine/run_state.dart';
@@ -117,6 +118,10 @@ class _RunHudState extends State<RunHud> {
                       },
                     ),
                   ),
+                  for (final id in r.potions) ...[
+                    const SizedBox(width: 6),
+                    _potionChip(context, id),
+                  ],
                   if (r.pages.isNotEmpty) ...[
                     const SizedBox(width: 8),
                     Container(
@@ -135,6 +140,79 @@ class _RunHudState extends State<RunHud> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Draughts carried between fights. Most can only be drunk in combat — those
+  /// say so instead of leaving the player tapping a dead button.
+  Widget _potionChip(BuildContext context, String id) {
+    final p = potionDef(id);
+    final c = p.elem == Elem.none ? Ae.gold : p.elem.color;
+    return GestureDetector(
+      onTap: () => _potionInfo(context, p),
+      child: Container(
+        width: 28,
+        height: 34,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: c.withValues(alpha: .85), width: 1.3),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [c.withValues(alpha: .36), c.withValues(alpha: .10)],
+          ),
+        ),
+        child: Center(
+          child: Text(p.elem == Elem.none ? '◈' : p.elem.glyph,
+              style: TextStyle(fontSize: 14, color: c, height: 1)),
+        ),
+      ),
+    );
+  }
+
+  void _potionInfo(BuildContext context, PotionDef p) {
+    Audio.i.sfx('tap');
+    final c = p.elem == Elem.none ? Ae.gold : p.elem.color;
+    aeDialog(
+      context,
+      accent: c,
+      kicker: '${p.rarity.label} DRAUGHT',
+      title: p.name,
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(p.desc, style: Ae.body(16.5, c: Ae.bone, h: 1.55)),
+          const SizedBox(height: 16),
+          if (p.outOfBattle)
+            AeButton(
+              label: 'DRINK IT NOW',
+              color: c,
+              onTap: () {
+                final r = Game.i.run!;
+                if (!r.potions.remove(p.id)) return;
+                for (final fx in p.fx) {
+                  switch (fx.kind) {
+                    case FxKind.heal:
+                      r.heal(fx.value);
+                    case FxKind.loseHp:
+                      r.damage(fx.value);
+                    case FxKind.maxHp:
+                      r.gainMaxHp(fx.value);
+                    default:
+                      break; // combat-only effects have nothing to act on here
+                  }
+                }
+                Audio.i.sfx('relic');
+                Game.i.saveRun();
+                Navigator.of(context).pop();
+              },
+            )
+          else
+            Text('This one only works mid-fight.',
+                style: Ae.label(13, c: Ae.dim)),
+        ],
       ),
     );
   }

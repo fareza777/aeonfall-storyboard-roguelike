@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../audio.dart';
+import '../data/potions.dart';
 import '../engine/core.dart';
+import '../engine/run_state.dart';
 import '../game.dart';
 import '../theme.dart';
 import 'run_hud.dart';
@@ -22,6 +24,11 @@ class _ShopScreenState extends State<ShopScreen> {
   };
   late final RelicDef _relic = Game.i.director!.relicReward();
   late final int _relicPrice = 180 + Game.i.run!.act * 60;
+  late final List<PotionDef> _potions = Game.i.director!.potionStock();
+  late final Map<String, int> _potionPrices = {
+    for (final p in _potions) p.id: Game.i.director!.potionPrice(p)
+  };
+  final Set<String> _potionsSold = {};
   final Set<String> _sold = {};
   bool _relicSold = false;
   bool _removed = false;
@@ -118,6 +125,69 @@ class _ShopScreenState extends State<ShopScreen> {
     );
   }
 
+  Widget _potionShelf(RunState r) => Row(
+        children: [
+          for (final p in _potions)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: _potionTile(r, p),
+              ),
+            ),
+        ],
+      );
+
+  Widget _potionTile(RunState r, PotionDef p) {
+    final price = _potionPrices[p.id]!;
+    final sold = _potionsSold.contains(p.id);
+    final c = p.elem == Elem.none ? Ae.gold : p.elem.color;
+    final afford = r.gold >= price && !r.beltFull;
+    return GestureDetector(
+      onTap: sold ? null : () => _buyPotion(p),
+      child: Opacity(
+        opacity: sold ? .4 : 1,
+        child: AePanel(
+          border: sold ? Ae.panelHi : (afford ? c : Ae.panelHi),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(p.elem == Elem.none ? '◈' : p.elem.glyph,
+                  style: TextStyle(fontSize: 24, color: c, height: 1.1)),
+              const SizedBox(height: 6),
+              Text(p.name.toUpperCase(),
+                  textAlign: TextAlign.center, maxLines: 2, style: Ae.label(10.5)),
+              const SizedBox(height: 6),
+              Text(sold ? 'SOLD' : '◈ $price',
+                  style: Ae.body(14,
+                      w: 800, c: sold ? Ae.dim : (afford ? Ae.gold : Ae.blood))),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _buyPotion(PotionDef p) {
+    final r = Game.i.run!;
+    final price = _potionPrices[p.id]!;
+    if (r.gold < price || _potionsSold.contains(p.id)) return;
+    if (r.beltFull) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: Ae.ink2,
+        content: Text('Your belt is full. Drink one first.', style: Ae.body(15)),
+      ));
+      return;
+    }
+    Audio.i.sfx('coin');
+    setState(() {
+      r.gold -= price;
+      r.addPotion(p.id);
+      _potionsSold.add(p.id);
+    });
+    Game.i.saveRun();
+  }
+
   @override
   Widget build(BuildContext context) {
     final r = Game.i.run!;
@@ -197,6 +267,10 @@ class _ShopScreenState extends State<ShopScreen> {
                               },
                             ),
                           ),
+                          const SizedBox(height: 20),
+                          Text('DRAUGHTS', style: Ae.label(14)),
+                          const SizedBox(height: 10),
+                          _potionShelf(r),
                           const SizedBox(height: 20),
                           Text('SIGIL', style: Ae.label(14)),
                           const SizedBox(height: 10),

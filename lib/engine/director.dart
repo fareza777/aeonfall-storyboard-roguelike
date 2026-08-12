@@ -7,6 +7,7 @@ import '../data/companions.dart';
 import '../data/enemies.dart';
 import '../data/events.dart';
 import '../data/narrative_model.dart';
+import '../data/potions.dart';
 import '../data/relics.dart';
 import 'core.dart';
 import 'map_gen.dart';
@@ -288,6 +289,34 @@ class Director {
   }
 
   RelicDef relicReward() => relicDef(_randomRelic());
+
+  // ------------------------------------------------------------ draughts
+  PotionDef _rollPotion(String salt) {
+    final r = _r.fork('pot-$salt');
+    return r.weighted(kPotions, (p) => potionWeight(p.rarity));
+  }
+
+  /// Roughly a third of fights leave a draught behind; elites and bosses
+  /// always do. Returns null when the fight was not generous.
+  PotionDef? potionDrop(String kind) {
+    final r = _r.fork('drop-${run.act}-${run.totalFloors}');
+    final chance = switch (kind) {
+      'boss' => 100,
+      'elite' => 100,
+      _ => run.relics.contains('deep_satchel') ? 55 : 35,
+    };
+    if (r.nextInt(100) >= chance) return null;
+    return _rollPotion('${run.act}-${run.totalFloors}');
+  }
+
+  List<PotionDef> potionStock() =>
+      [for (var i = 0; i < 3; i++) _rollPotion('shop-${run.totalFloors}-$i')];
+
+  int potionPrice(PotionDef p) => switch (p.rarity) {
+        Rarity.common => 45 + _r.nextInt(15),
+        Rarity.uncommon => 80 + _r.nextInt(25),
+        _ => 135 + _r.nextInt(35),
+      };
 
   List<CardDef> shopStock() {
     final r = _r.fork('shop-${run.act}-${run.totalFloors}');

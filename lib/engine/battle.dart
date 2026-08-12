@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import '../data/cards.dart';
+import '../data/potions.dart';
 import '../data/relics.dart';
 import '../data/vessels.dart';
 import 'core.dart';
@@ -761,6 +762,28 @@ class Battle {
 
     _checkCinematic();
     _checkEnd();
+  }
+
+  /// Drink a draught from the belt. Free — it costs no Aether and does not
+  /// count as a played frame, so it can never be the reason a Cinematic
+  /// fails to fire.
+  bool usePotion(String potionId) {
+    if (ended || inFoePhase) return false;
+    if (!run.potions.remove(potionId)) return false;
+    final p = potionDef(potionId);
+    _say('${_short(p.name, 18)} — drunk', kind: 'card');
+    _tally = 0;
+    _hits.clear();
+    _applyFxList(p.fx, null, source: p.name);
+    if (_hits.isNotEmpty) {
+      _say(
+          _hits.length == 1
+              ? '→ ${_short(_hits.keys.first.displayName)} $_tally'
+              : '→ ${_hits.length} foes $_tally',
+          kind: 'card');
+    }
+    _checkEnd();
+    return true;
   }
 
   void _onExhaust() {

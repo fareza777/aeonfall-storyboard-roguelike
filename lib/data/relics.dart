@@ -1,5 +1,6 @@
 import '../engine/core.dart';
 import 'card_build.dart';
+import 'relics_b.dart';
 
 RelicDef _r(String id, String name, String desc, Rarity rarity, RelicTrigger t,
         {int value = 0, String? arg, List<Fx> fx = const []}) =>
@@ -148,10 +149,13 @@ final kRelics = <RelicDef>[
       Rarity.mythic, _pas),
   _r('ouroboros_true', 'Unbroken Ouroboros', 'Gain 2 Energy each turn. You cannot heal.',
       Rarity.mythic, _ts, fx: [nrg(2)]),
+  // Boss sigils are deliberately absent — they are handed out by the boss that
+  // drops them, never rolled here.
+  ...kRelicsB,
 ];
 
 final Map<String, RelicDef> kRelicById = {
-  for (final r in [...kRelics, ...kStarterRelics]) r.id: r
+  for (final r in [...kRelics, ...kStarterRelics, ...kRelicsB, ...kBossRelics]) r.id: r
 };
 
 RelicDef relicDef(String id) => kRelicById[id] ?? kRelics.first;

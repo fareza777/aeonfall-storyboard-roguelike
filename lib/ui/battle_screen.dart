@@ -5,6 +5,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart' hide Intent;
 
 import '../audio.dart';
+import '../data/potions.dart';
+import '../data/relics_b.dart';
 import '../engine/battle.dart';
 import '../engine/core.dart';
 import '../engine/map_gen.dart';
@@ -440,6 +442,10 @@ class _BattleScreenState extends State<BattleScreen> with TickerProviderStateMix
             relic: widget.type != NodeType.battle,
             cards: true,
             isBoss: widget.type == NodeType.boss,
+            // Bosses leave a sigil that only they drop.
+            bossRelicId: widget.type == NodeType.boss && b.foes.isNotEmpty
+                ? bossRelicFor(b.foes.first.def!.id)
+                : null,
             title: switch (widget.type) {
               NodeType.boss => 'THE ACT ENDS',
               NodeType.elite => 'THE ELITE FALLS',
@@ -1198,10 +1204,114 @@ class _BattleScreenState extends State<BattleScreen> with TickerProviderStateMix
             StatusRow(h.st, aura: h.aura, size: 12.5),
           ],
           const SizedBox(height: 6),
-          _comboMeter(),
+          // The belt shares this line with the meter: the meter takes whatever
+          // is left, so a fourth slot can never push the row off the screen.
+          Row(
+            children: [
+              Expanded(child: _comboMeter()),
+              const SizedBox(width: 8),
+              _potionBelt(),
+            ],
+          ),
         ],
       ),
     );
+  }
+
+  /// The draught belt. Always shows every slot, including the empty ones, so
+  /// the player can see at a glance that there is somewhere to put one.
+  Widget _potionBelt() {
+    final run = Game.i.run!;
+    final slots = run.potionSlots;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < slots; i++)
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: i < run.potions.length
+                ? _potionSlot(potionDef(run.potions[i]))
+                : _emptySlot(),
+          ),
+      ],
+    );
+  }
+
+  Widget _emptySlot() => Container(
+        width: 30,
+        height: 34,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Ae.panelHi.withValues(alpha: .55)),
+          color: Ae.ink.withValues(alpha: .35),
+        ),
+      );
+
+  Widget _potionSlot(PotionDef p) {
+    final c = p.elem == Elem.none ? Ae.gold : p.elem.color;
+    return GestureDetector(
+      onTap: () => _openPotion(p),
+      child: Container(
+        width: 30,
+        height: 34,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: c.withValues(alpha: .9), width: 1.3),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [c.withValues(alpha: .40), c.withValues(alpha: .12)],
+          ),
+          boxShadow: [BoxShadow(color: c.withValues(alpha: .35), blurRadius: 7)],
+        ),
+        child: Center(
+          child: Text(p.elem == Elem.none ? '◈' : p.elem.glyph,
+              style: TextStyle(fontSize: 15, color: c, height: 1)),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openPotion(PotionDef p) async {
+    if (_busy) return;
+    final c = p.elem == Elem.none ? Ae.gold : p.elem.color;
+    var drink = false;
+    await aeSheet(
+      context,
+      title: p.name,
+      subtitle: p.rarity.label,
+      accent: c,
+      heightFactor: .52,
+      builder: (sheetCtx) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(p.desc, style: Ae.body(18, h: 1.5)),
+          const SizedBox(height: 24),
+          AeButton(
+            label: 'DRINK IT',
+            color: c,
+            big: true,
+            onTap: () {
+              drink = true;
+              Navigator.of(sheetCtx).pop();
+            },
+          ),
+          const SizedBox(height: 10),
+          AeButton(
+            label: 'NOT YET',
+            color: Ae.dim,
+            onTap: () => Navigator.of(sheetCtx).pop(),
+          ),
+        ],
+      ),
+    );
+    if (!drink || !mounted) return;
+    Audio.i.sfx('relic', volume: .7);
+    setState(() => b.usePotion(p.id));
+    Game.i.saveRun();
+    _drain();
+    _checkEnd();
   }
 
   /// Energy, as a machined dial: pip ring for the total, big numeral for what
@@ -1261,10 +1371,14 @@ class _BattleScreenState extends State<BattleScreen> with TickerProviderStateMix
     final n = best.value.clamp(0, 3);
     return Row(
       key: _kCombo,
+      mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text('${best.key.glyph} CINEMATIC ',
-            style: Ae.label(12, c: best.key.color)),
+        Flexible(
+          child: Text('${best.key.glyph} CINEMATIC ',
+              overflow: TextOverflow.ellipsis,
+              style: Ae.label(12, c: best.key.color)),
+        ),
         for (var i = 0; i < 3; i++)
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 2),

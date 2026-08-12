@@ -45,6 +45,18 @@ class RunState {
   late List<String> relics;
   StoryMap? map;
 
+  /// The draught belt. Three slots, four with the Deep Satchel.
+  List<String> potions = [];
+  int get potionSlots => relics.contains('deep_satchel') ? 4 : 3;
+  bool get beltFull => potions.length >= potionSlots;
+
+  /// Returns false when there was no room, so callers can offer a swap.
+  bool addPotion(String id) {
+    if (beltFull) return false;
+    potions.add(id);
+    return true;
+  }
+
   // ------------------------------------------------------- narrative
   String chronicleId = '';
   String antagonistId = '';
@@ -106,6 +118,7 @@ class RunState {
         'mirror': mirrorCoinUsed,
         'deck': deck.map((c) => c.toJson()).toList(),
         'relics': relics,
+        'potions': potions,
         'map': map?.toJson(),
         'chron': chronicleId,
         'antag': antagonistId,
@@ -135,6 +148,7 @@ class RunState {
         .map((e) => CardInst(cardDef(e['id']), upgraded: e['up'] == true))
         .toList();
     r.relics = List<String>.from(j['relics']);
+    r.potions = List<String>.from(j['potions'] ?? []);
     r.map = j['map'] == null ? null : StoryMap.fromJson(j['map']);
     r.chronicleId = j['chron'] ?? '';
     r.antagonistId = j['antag'] ?? '';
