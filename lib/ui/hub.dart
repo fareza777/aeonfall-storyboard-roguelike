@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../audio.dart';
+import '../data/ascension.dart';
 import '../data/vessels.dart';
 import '../game.dart';
 import '../theme.dart';
@@ -142,9 +143,67 @@ class _HubScreenState extends State<HubScreen> {
           _pill('RUNS', '${m.runs}'),
           _pill('FINISHED', '${m.wins}'),
           _pill('ENDINGS', '${m.endings.length}/12'),
-          _pill('ASCENSION', '${m.ascension}'),
+          GestureDetector(
+            onTap: () => _showAscensions(m.ascension),
+            child: _pill('ASCENSION', '${m.ascension} ›'),
+          ),
         ],
       );
+
+  /// The twenty rules, with the ones currently in force marked. A player at a
+  /// high Ascension is playing a different game and has to be able to read
+  /// exactly how before they set out.
+  void _showAscensions(int level) {
+    Audio.i.sfx('tap');
+    aeSheet(
+      context,
+      title: 'ASCENSION $level',
+      subtitle: level == 0
+          ? 'No rules changed yet. Finish a run to raise it.'
+          : '$level of 20 rules in force',
+      heightFactor: .84,
+      builder: (_) => ListView.separated(
+        padding: const EdgeInsets.fromLTRB(18, 8, 18, 28),
+        itemCount: kAscensions.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 8),
+        itemBuilder: (_, i) {
+          final t = kAscensions[i];
+          final on = t.level <= level;
+          return AePanel(
+            border: on ? Ae.gold : Ae.panelHi,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 30,
+                  child: Text('${t.level}',
+                      style: Ae.display(19, c: on ? Ae.gold : Ae.dim)),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(t.title.toUpperCase(),
+                          style: Ae.label(13.5, c: on ? Ae.bone : Ae.dim)),
+                      const SizedBox(height: 4),
+                      Text(t.desc,
+                          style: Ae.body(15, c: on ? Ae.bone : Ae.dim, h: 1.45)),
+                    ],
+                  ),
+                ),
+                if (on)
+                  const Padding(
+                    padding: EdgeInsets.only(left: 8, top: 2),
+                    child: Text('●', style: TextStyle(color: Ae.gold, fontSize: 12)),
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
 
   Widget _pill(String k, String v) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),

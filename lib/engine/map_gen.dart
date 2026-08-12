@@ -1,3 +1,4 @@
+import '../data/ascension.dart';
 import 'rng.dart';
 
 enum NodeType { battle, elite, event, shop, rest, treasure, mystery, boss, beat }
@@ -90,7 +91,8 @@ const _mapWidth = 4;
 
 /// Builds one Act's branching map. Layout, node mix and path count all vary
 /// with the seed, so no two Acts read the same.
-StoryMap generateMap(Rng seed, int act) {
+StoryMap generateMap(Rng seed, int act, {int ascension = 0}) {
+  final asc = AscensionRules(ascension);
   final rng = seed.fork('map-$act');
   const layers = _layerCount;
   final grid = <String, MapNode>{};
@@ -125,10 +127,10 @@ StoryMap generateMap(Rng seed, int act) {
   // Assign node types with a layer-aware mix.
   for (final n in grid.values) {
     if (n.layer == layers - 1) continue;
-    n.type = _pickType(rng, n.layer, act);
+    n.type = _pickType(rng, n.layer, act, asc);
   }
   // Guaranteed beats so every Act has structure.
-  _force(grid, 0, NodeType.battle);
+  _force(grid, 0, asc.firstFightIsElite ? NodeType.elite : NodeType.battle);
   _force(grid, 4, NodeType.treasure);
   _force(grid, 7, NodeType.beat);
   _force(grid, 9, NodeType.rest);
@@ -146,16 +148,17 @@ void _force(Map<String, MapNode> grid, int layer, NodeType t) {
   }
 }
 
-NodeType _pickType(Rng rng, int layer, int act) {
-  // Elites only appear once the player has had a chance to build.
-  final canElite = layer >= 5;
+NodeType _pickType(Rng rng, int layer, int act, AscensionRules asc) {
+  // Elites only appear once the player has had a chance to build — Ascension 2
+  // moves that line up and thickens the pool.
+  final canElite = layer >= (asc.at(2) ? 3 : 5);
   final pool = <NodeType, int>{
     NodeType.battle: 46,
     NodeType.event: 24,
     NodeType.mystery: 10,
     NodeType.shop: layer >= 3 ? 7 : 0,
     NodeType.rest: layer >= 5 ? 8 : 0,
-    NodeType.elite: canElite ? 12 + act * 3 : 0,
+    NodeType.elite: canElite ? 12 + act * 3 + asc.eliteWeightBonus * 3 : 0,
     NodeType.treasure: 5,
   };
   final keys = pool.keys.toList();

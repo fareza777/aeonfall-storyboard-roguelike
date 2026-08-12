@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import '../data/ascension.dart';
 import '../data/beats.dart';
 import '../data/cards.dart';
 import '../data/chronicles.dart';
@@ -22,13 +23,23 @@ class Director {
 
   Rng get _r => run.rng;
 
+  /// Which Ascension rules are in force. Everything that scales with
+  /// difficulty asks this rather than doing its own arithmetic.
+  AscensionRules get asc => AscensionRules(run.ascension);
+
   // -------------------------------------------------------- run setup
   static RunState newRun(int seed, String vesselId, MetaState meta) {
     final run = RunState(seed: seed, vesselId: vesselId, ascension: meta.ascension);
-    run.maxHp += meta.bonusHp;
+    final asc = AscensionRules(meta.ascension);
+    run.maxHp += meta.bonusHp - asc.startingMaxHpPenalty;
+    if (run.maxHp < 20) run.maxHp = 20;
     run.hp = run.maxHp;
     run.gold = 120 + meta.bonusGold;
     if (meta.extraRelic) run.addRelic('bone_flute');
+    // Ascension 4 — you set out already carrying something you did not choose.
+    if (asc.startWithCurse) {
+      run.addCard(run.rng.fork('asc').pick(kCursePool).id);
+    }
 
     final r = run.rng.fork('narrative');
     final chron = r.pick(kChronicles);
@@ -42,7 +53,7 @@ class Director {
     run.setFlag('cand_${pool[2].id}');
     run.betrayerId = r.pick(pool).id;
 
-    run.map = generateMap(run.rng, 1);
+    run.map = generateMap(run.rng, 1, ascension: meta.ascension);
     run.note('${chron.title} — ${chron.subtitle}');
     return run;
   }
@@ -275,10 +286,11 @@ class Director {
   }
 
   // --------------------------------------------------------- rewards
-  List<CardDef> cardReward({int count = 3}) {
+  List<CardDef> cardReward({int? count}) {
     final r = _r.fork('rw-${run.act}-${run.totalFloors}');
     final pool = rewardPoolFor(run.vesselId);
-    final n = count + (run.relics.contains('marrow_die') ? 1 : 0);
+    final n = (count ?? asc.cardRewardCount) +
+        (run.relics.contains('marrow_die') ? 1 : 0);
     final out = <CardDef>[];
     var guard = 0;
     while (out.length < n && guard++ < 200) {
@@ -300,11 +312,13 @@ class Director {
   /// always do. Returns null when the fight was not generous.
   PotionDef? potionDrop(String kind) {
     final r = _r.fork('drop-${run.act}-${run.totalFloors}');
-    final chance = switch (kind) {
-      'boss' => 100,
-      'elite' => 100,
-      _ => run.relics.contains('deep_satchel') ? 55 : 35,
-    };
+    // Elites and bosses always leave one. Ascension 14 thins ordinary fights
+    // only — the guarantee is the floor the player can plan around.
+    if (kind == 'boss' || kind == 'elite') {
+      return _rollPotion('${run.act}-${run.totalFloors}');
+    }
+    final base = run.relics.contains('deep_satchel') ? 55 : 35;
+    final chance = (base * asc.potionDropRate).round();
     if (r.nextInt(100) >= chance) return null;
     return _rollPotion('${run.act}-${run.totalFloors}');
   }
@@ -312,11 +326,11 @@ class Director {
   List<PotionDef> potionStock() =>
       [for (var i = 0; i < 3; i++) _rollPotion('shop-${run.totalFloors}-$i')];
 
-  int potionPrice(PotionDef p) => switch (p.rarity) {
+  int potionPrice(PotionDef p) => _marked(switch (p.rarity) {
         Rarity.common => 45 + _r.nextInt(15),
         Rarity.uncommon => 80 + _r.nextInt(25),
         _ => 135 + _r.nextInt(35),
-      };
+      });
 
   List<CardDef> shopStock() {
     final r = _r.fork('shop-${run.act}-${run.totalFloors}');
@@ -331,13 +345,16 @@ class Director {
     return out;
   }
 
-  int cardPrice(CardDef c) => switch (c.rarity) {
+  /// Ascension 7 marks every shelf up.
+  int _marked(int base) => (base * asc.shopPrices).round();
+
+  int cardPrice(CardDef c) => _marked(switch (c.rarity) {
         Rarity.common => 55 + _r.nextInt(20),
         Rarity.uncommon => 95 + _r.nextInt(30),
         Rarity.rare => 165 + _r.nextInt(40),
         Rarity.mythic => 260,
         _ => 60,
-      };
+      });
 
   // ----------------------------------------------------- act handling
   bool get atBossCleared =>
@@ -348,7 +365,8 @@ class Director {
     run.act++;
     run.floor = 0;
     if (run.act <= 3) {
-      run.map = generateMap(run.rng.fork('act$run.act'), run.act);
+      run.map = generateMap(run.rng.fork('act$run.act'), run.act,
+          ascension: run.ascension);
       run.heal((run.maxHp * .25).round());
     }
   }

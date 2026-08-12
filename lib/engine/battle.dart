@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import '../data/ascension.dart';
 import '../data/cards.dart';
 import '../data/potions.dart';
 import '../data/relics.dart';
@@ -209,6 +210,9 @@ class Battle {
   VesselDef get vessel => run.vessel;
   bool has(String relicId) => run.relics.contains(relicId);
 
+  /// Which of the twenty Ascension rules are in force for this run.
+  AscensionRules get asc => AscensionRules(run.ascension);
+
   // ------------------------------------------------------------ setup
   void _buildFoes() {
     final modPool = kEnemyMods.keys.toList();
@@ -216,10 +220,12 @@ class Battle {
       final mods = <String>[];
       final chance = switch (run.act) { 1 => .18, 2 => .34, _ => .50 };
       if (d.tier == 0 && rng.chance(chance)) mods.add(rng.pick(modPool));
-      if (d.tier == 1 && rng.chance(chance + .15)) mods.add(rng.pick(modPool));
+      if (d.tier == 1 && (asc.elitesAlwaysMutated || rng.chance(chance + .15))) {
+        mods.add(rng.pick(modPool));
+      }
 
       var maxHp = rng.range(d.hp, d.hpMax);
-      maxHp = (maxHp * (1 + .06 * run.ascension)).round();
+      maxHp = (maxHp * asc.foeHp).round();
       if (mods.contains('hollow')) maxHp = (maxHp * 1.35).round();
       if (mods.contains('waning')) maxHp = (maxHp * .75).round();
 
@@ -227,6 +233,7 @@ class Battle {
       // A foe wears its own element. Strike it with a different one to react.
       f.aura = d.elem;
       f.auraTurns = 99;
+      if (asc.finalBossGrows && d.tier >= 2 && run.act >= 3) f.add('strength', 3);
       if (mods.contains('ashen')) f.add('strength', 3);
       if (mods.contains('warded')) f.block = 12 + run.act * 8;
       if (d.passive == 'colossus') f.awake = false;
@@ -282,7 +289,9 @@ class Battle {
       }
     }
 
-    var n = 5 - hero.s('curse') - hand.where((c) => c.def.id == 'cu_doubt').length;
+    var n = (first ? asc.firstDraw : 5) -
+        hero.s('curse') -
+        hand.where((c) => c.def.id == 'cu_doubt').length;
     if (has('clock_hand') && hand.isEmpty) n += 2;
     _draw(math.max(1, n));
 
@@ -487,7 +496,10 @@ class Battle {
   /// foe can never chain them into an unbounded loop.
   void _extraActions(Combatant f) {
     if (!f.alive || ended) return;
+    var used = false;
     void again(String why) {
+      if (used) return;
+      used = true;
       f.patternIdx++;
       _planIntents();
       _say('${_short(f.displayName)} — $why', kind: 'foe');
@@ -513,6 +525,16 @@ class Battle {
         }
       case 'toll':
         _applyStatus(hero, 'vulnerable', 1);
+    }
+
+    // Ascension 18 — bosses get a fourth-turn swing on top of whatever their
+    // own passive already buys them.
+    if (asc.bossesActTwice && f.def!.tier >= 2 && f.turnsTaken % 4 == 3) {
+      again('it is not waiting its turn');
+    }
+    // Ascension 20 — the last thing you fight never stops growing.
+    if (asc.finalBossGrows && f.def!.tier >= 2 && run.act >= 3) {
+      f.add('strength', 1);
     }
   }
 
@@ -564,6 +586,7 @@ class Battle {
           if (!f.alive || ended) break;
           var dmgAmt = it.value;
           if (f.mods.contains('waning')) dmgAmt = (dmgAmt * 1.5).round();
+          if (asc.foeDamage != 1.0) dmgAmt = (dmgAmt * asc.foeDamage).round();
           _damage(f, hero, dmgAmt, isAttack: true, elem: it.elem);
           if (f.s('bleed') > 0) _hurt(f, f.s('bleed'), 'Bleed');
           if (f.mods.contains('venomous')) _applyStatus(hero, 'poison', 2);
@@ -812,7 +835,7 @@ class Battle {
     if (cinematicUsedThisTurn || pendingCinematic != null) return;
     for (final e in Elem.values) {
       if (e == Elem.none) continue;
-      if (elemsThisTurn.where((x) => x == e).length >= 3) {
+      if (elemsThisTurn.where((x) => x == e).length >= asc.cinematicFrames) {
         cinematicUsedThisTurn = true;
         cinematicsFired++;
         elemsThisTurn.clear(); // meter empties the instant it triggers
@@ -1311,6 +1334,19 @@ class Battle {
 
   void _onDeath(Combatant f) {
     if (f.isPlayer) return;
+
+    // Ascension 8: a boss gets up once. Deliberately before anything else so
+    // no on-kill effect fires for a death that did not stick.
+    if (asc.bossesReviveOnce && f.def!.tier >= 2 && !f.phaseTwo) {
+      f.phaseTwo = true;
+      f.hp = (f.maxHp / 3).round();
+      f.block = 0;
+      f.add('strength', 2);
+      _say('${_short(f.displayName)} is not finished', kind: 'cinematic');
+      _pop(f, 'AGAIN', 'status');
+      return;
+    }
+
     f.hp = 0;
     _say('${_short(f.displayName)} is erased', kind: 'death');
 
@@ -1443,6 +1479,9 @@ class Battle {
     if (v <= 0) return;
     var amt = v + t.s('guard');
     if (t.isPlayer && has('frozen_rose')) amt += 2;
+    if (t.isPlayer && asc.guardGain != 1.0) {
+      amt = math.max(1, (amt * asc.guardGain).round());
+    }
     t.block += amt;
     _pop(t, '+$amt', 'block');
     if (t.isPlayer && hero.s('glacierheart') > 0) {
@@ -1578,6 +1617,7 @@ class Battle {
       _ => rng.range(24, 44),
     };
     if (foes.any((f) => f.mods.contains('gilded'))) gold *= 2;
+    if (asc.goldGain != 1.0) gold = (gold * asc.goldGain).round();
     goldReward = gold;
     for (final id in run.relics) {
       final r = relicDef(id);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../audio.dart';
+import '../data/ascension.dart';
 import '../data/narrative_model.dart';
 import '../game.dart';
 import '../theme.dart';
@@ -41,7 +42,7 @@ class _RestScreenState extends State<RestScreen> {
 
   void _rest() {
     final r = Game.i.run!;
-    var amount = (r.maxHp * .32).round();
+    var amount = (r.maxHp * .32 * AscensionRules(r.ascension).restHealing).round();
     if (r.relics.contains('chalk_stub')) amount += 12;
     r.heal(amount);
     Audio.i.sfx('heal');
