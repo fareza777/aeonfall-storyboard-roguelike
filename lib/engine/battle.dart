@@ -1084,6 +1084,119 @@ class Battle {
   }
 
   // ------------------------------------------------------------ combat math
+  /// Every multiplier that stands between a printed number and the number a
+  /// target actually takes — Strength, Weak, Vulnerable, Rime, Overcharge,
+  /// relics and foe passives — with no side effects at all.
+  ///
+  /// Both the real hit and the on-screen forecast go through this, so the
+  /// preview cannot drift out of step with what the swing does.
+  int projectedHit(Combatant src, Combatant dst, int raw,
+      {bool isAttack = true,
+      Elem elem = Elem.none,
+      bool multi = false,
+      int? momentum}) {
+    var v = raw.toDouble();
+
+    if (isAttack) v += src.s('strength');
+    v += (momentum ?? src.s('momentum')) * 2;
+    if (isAttack && src.s('weak') > 0) v *= .75;
+    if (src.s('overcharge') > 0) v *= 1.5;
+    if (src.isPlayer) {
+      if (has('wolf_sigil') && hero.hp * 2 < hero.maxHp) v *= 1.15;
+      if (elem == Elem.lumen && has('sun_nail')) v *= 1.25;
+      if (has('nail_of_ending') && dst.s('doom') > 0) v *= 1.25;
+      if (hero.s('radiance') > 0 && elem == Elem.lumen) v *= 1.5;
+    }
+
+    if (isAttack && dst.s('vulnerable') > 0) v *= 1.4;
+    if (dst.s('rime') > 0) v *= 1.3;
+    if (dst.s('overcharge') > 0) v *= 1.25;
+    if (!dst.isPlayer && dst.def!.passive == 'pity' && dst.hp * 2 > dst.maxHp) v *= .5;
+    if (!dst.isPlayer && dst.mods.contains('hollow')) v *= .9;
+    if (!dst.isPlayer && dst.def!.passive == 'swarm' && raw >= 15) v *= .7;
+    if (!dst.isPlayer && dst.def!.passive == 'bulwark' && multi) v *= .6;
+
+    final amount = v.round();
+    return amount < 1 ? 1 : amount;
+  }
+
+  /// True when playing [c] into [f] would set off a Reaction. The bonus damage
+  /// a Reaction does is not folded into [previewDamage] — several of them
+  /// scale off things that only exist once the hit has landed — so the UI
+  /// flags it instead of printing a number it cannot stand behind.
+  String? previewReaction(CardInst c, Combatant f) {
+    if (!f.alive || c.def.elem == Elem.none || f.aura == Elem.none) return null;
+    return reactionFor(f.aura, c.def.elem);
+  }
+
+  /// What [c] would take off [f] if you played it right now, Guard included.
+  /// Returns null when the frame does no damage to that foe at all, so the UI
+  /// can leave the portrait clean rather than printing a nought.
+  int? previewDamage(CardInst c, Combatant f) {
+    if (!f.alive) return null;
+    if (f.phasedOut) return null;
+    if (f.def!.passive == 'shroud' && foes.any((x) => x.alive && x != f)) return null;
+
+    var total = 0;
+    var guard = f.block;
+    // Momentum is spent by the first hit that lands, so only the first hit in
+    // the forecast may count it.
+    var momentum = hero.s('momentum');
+    int hit(int raw, {bool multi = false}) {
+      final v = projectedHit(hero, f, raw,
+          elem: c.def.elem, multi: multi, momentum: momentum);
+      momentum = 0;
+      return v;
+    }
+
+    for (final fx in c.fx) {
+      final hitsThis = switch (fx.target) {
+        FxTarget.allEnemies => true,
+        FxTarget.enemy => true,
+        // A random target is a coin toss; promising a number would be a lie.
+        FxTarget.randomEnemy => false,
+        FxTarget.self => false,
+      };
+      if (!hitsThis) continue;
+
+      void land(int raw, {bool multi = false, bool pierces = false}) {
+        final v = hit(raw, multi: multi);
+        if (pierces) {
+          total += v;
+          return;
+        }
+        final absorbed = math.min(guard, v);
+        guard -= absorbed;
+        total += v - absorbed;
+      }
+
+      switch (fx.kind) {
+        case FxKind.damage:
+        case FxKind.damageAll:
+          for (var i = 0; i < fx.times; i++) {
+            land(fx.value, multi: fx.times > 1);
+          }
+        case FxKind.pierce:
+          land(fx.value, pierces: true);
+        case FxKind.drainLife:
+          land(fx.value);
+        case FxKind.damageScaled:
+          land(fx.value + f.s(fx.arg ?? '') * fx.times);
+        case FxKind.damageEqualBlock:
+          land(hero.block * fx.value ~/ 100);
+        case FxKind.scaleDamageByBlock:
+          land(fx.value + (hero.block * fx.times ~/ 100));
+        case FxKind.scaleDamageByHandSize:
+          land(fx.value + hand.length * fx.times);
+        default:
+          // Anything else either does no damage or depends on how the rest of
+          // the turn plays out, and is deliberately left out of the promise.
+          break;
+      }
+    }
+    return total > 0 ? total : null;
+  }
+
   int _damage(Combatant src, Combatant dst, int raw,
       {bool isAttack = true, bool pierce = false, Elem elem = Elem.none, bool multi = false}) {
     if (raw <= 0 || !dst.alive) return 0;
@@ -1102,32 +1215,11 @@ class Battle {
       return 0;
     }
 
-    var v = raw.toDouble();
+    final momentum = src.s('momentum');
+    if (momentum > 0) src.clear('momentum');
 
-    if (isAttack) v += src.s('strength');
-    if (src.s('momentum') > 0) {
-      v += src.s('momentum') * 2;
-      src.clear('momentum');
-    }
-    if (isAttack && src.s('weak') > 0) v *= .75;
-    if (src.s('overcharge') > 0) v *= 1.5;
-    if (src.isPlayer) {
-      if (has('wolf_sigil') && hero.hp * 2 < hero.maxHp) v *= 1.15;
-      if (elem == Elem.lumen && has('sun_nail')) v *= 1.25;
-      if (has('nail_of_ending') && dst.s('doom') > 0) v *= 1.25;
-      if (hero.s('radiance') > 0 && elem == Elem.lumen) v *= 1.5;
-    }
-
-    if (isAttack && dst.s('vulnerable') > 0) v *= 1.4;
-    if (dst.s('rime') > 0) v *= 1.3;
-    if (dst.s('overcharge') > 0) v *= 1.25;
-    if (!dst.isPlayer && dst.def!.passive == 'pity' && dst.hp * 2 > dst.maxHp) v *= .5;
-    if (!dst.isPlayer && dst.mods.contains('hollow')) v *= .9;
-    if (!dst.isPlayer && dst.def!.passive == 'swarm' && raw >= 15) v *= .7;
-    if (!dst.isPlayer && dst.def!.passive == 'bulwark' && multi) v *= .6;
-
-    var amount = v.round();
-    if (amount < 1) amount = 1;
+    var amount = projectedHit(src, dst, raw,
+        isAttack: isAttack, elem: elem, multi: multi, momentum: momentum);
 
     if (dst.isPlayer && dst.s('ward') > 0 && isAttack) {
       dst.add('ward', -1);

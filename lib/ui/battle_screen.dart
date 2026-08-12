@@ -689,6 +689,50 @@ class _BattleScreenState extends State<BattleScreen> with TickerProviderStateMix
     );
   }
 
+  /// The other half of the readout's promise. The panel answers "what is about
+  /// to happen to me"; this answers "what am I about to do", on the foe it
+  /// would happen to, before committing to it.
+  Widget _forecastOverlay(Combatant f, double art) {
+    final c = _selected;
+    if (c == null) return const SizedBox.shrink();
+    final n = b.previewDamage(c, f);
+    if (n == null) return const SizedBox.shrink();
+    final react = b.previewReaction(c, f);
+    final lethal = n >= f.hp;
+    return IgnorePointer(
+      child: Container(
+        color: Ae.ink.withValues(alpha: .34),
+        alignment: Alignment.center,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+          decoration: BoxDecoration(
+            color: Ae.ink.withValues(alpha: .88),
+            borderRadius: BorderRadius.circular(9),
+            border: Border.all(color: lethal ? Ae.good : Ae.blood, width: 1.6),
+            boxShadow: [
+              BoxShadow(
+                  color: (lethal ? Ae.good : Ae.blood).withValues(alpha: .5),
+                  blurRadius: 12),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(react != null ? '−$n+' : '−$n',
+                  style: Ae.display(art > 96 ? 25 : 21,
+                      c: lethal ? Ae.good : Ae.bone)),
+              if (lethal)
+                Text('LETHAL', style: Ae.label(9.5, c: Ae.good))
+              else if (react != null)
+                Text(kReactions[react]!.name,
+                    style: Ae.label(9, c: kReactions[react]!.color)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   // ------------------------------------------------------------- foes
   Widget _foeWidget(int idx, Combatant f, double art) {
     if (!f.alive) {
@@ -746,10 +790,18 @@ class _BattleScreenState extends State<BattleScreen> with TickerProviderStateMix
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(10),
-                    child: SizedBox(
-                      width: art,
-                      height: art,
-                      child: Art(f.def!.artKey()),
+                    child: Stack(
+                      children: [
+                        SizedBox(
+                          width: art,
+                          height: art,
+                          child: Art(f.def!.artKey()),
+                        ),
+                        // What the held frame would take off this foe, right
+                        // now, after its Guard and both sides' conditions.
+                        if (_selected != null)
+                          Positioned.fill(child: _forecastOverlay(f, art)),
+                      ],
                     ),
                   ),
                 ),
