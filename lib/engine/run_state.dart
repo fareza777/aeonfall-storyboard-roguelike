@@ -82,8 +82,10 @@ class RunState {
   void heal(int v) => hp = (hp + v).clamp(1, maxHp);
   void damage(int v) => hp = (hp - v).clamp(0, maxHp);
   void gainMaxHp(int v) {
-    maxHp += v;
-    hp += v;
+    // Events use this with a negative value to carve max HP away, so both
+    // numbers have to be floored or the run records a negative pool.
+    maxHp = (maxHp + v).clamp(1, 9999);
+    hp = (hp + v).clamp(0, maxHp);
   }
 
   void note(String s) {

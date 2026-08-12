@@ -40,6 +40,13 @@ class Combatant {
   bool awake = true;
   bool phaseTwo = false;
 
+  /// Reset at the top of every round. `regenerator` and `rewind` both need to
+  /// know whether anybody actually touched this foe since it last acted.
+  bool hurtThisRound = false;
+
+  /// True on the turns a `phasing` foe is intangible.
+  bool get phasedOut => def?.passive == 'phasing' && turnsTaken.isOdd;
+
   bool get alive => hp > 0;
   int s(String k) => st[k] ?? 0;
   void add(String k, int v) {
@@ -284,6 +291,8 @@ class Battle {
         if (ups.isNotEmpty) rng.pick(ups).upgraded = true;
       }
     }
+    _foesReachIntoYourTurn();
+
     for (final f in foes) {
       if (!f.alive || f.aura != Elem.none || f.def!.elem == Elem.none) continue;
       if (f.auraCooldown > 0) {
@@ -294,6 +303,62 @@ class Battle {
       }
     }
     _planIntents();
+  }
+
+  /// Passives that reach across the table and touch your hand, deck or Aether
+  /// at the top of your turn. These used to be printed on the foe and never
+  /// happen; a boss that says it erases your frames now erases them.
+  void _foesReachIntoYourTurn() {
+    for (final f in foes) {
+      if (!f.alive || !f.awake) continue;
+      switch (f.def!.passive) {
+        case 'siphon':
+          if (energy > 1) {
+            energy--;
+            _say('${_short(f.displayName)} siphons 1 Aether', kind: 'foe');
+          }
+
+        case 'editor':
+          final ups = hand.where((c) => c.upgraded).toList();
+          if (ups.isNotEmpty) {
+            final c = rng.pick(ups);
+            c.upgraded = false;
+            _say('${_short(f.displayName)} un-edits ${_short(c.name)}', kind: 'foe');
+          }
+
+        case 'author':
+          // The only passive in the game that costs you a card for good.
+          final pool = [...hand, ...drawPile, ...discard]
+              .where((c) => c.def.type != CardType.curse && c.def.type != CardType.status)
+              .toList();
+          if (pool.isNotEmpty) {
+            final c = rng.pick(pool);
+            hand.remove(c);
+            drawPile.remove(c);
+            discard.remove(c);
+            run.deck.removeWhere((x) => x.uid == c.uid);
+            exhausted.add(c);
+            _say('${_short(f.displayName)} erases ${_short(c.name)} — for good',
+                kind: 'foe');
+          }
+
+        case 'devour':
+          if (discard.isNotEmpty) {
+            final c = rng.pick(discard);
+            discard.remove(c);
+            exhausted.add(c);
+            _say('${_short(f.displayName)} devours ${_short(c.name)}', kind: 'foe');
+          }
+
+        case 'firstvessel':
+          if (run.relics.isNotEmpty && turn % 2 == 0) {
+            final r = relicDef(rng.pick(run.relics));
+            _damage(f, hero, 8, isAttack: false);
+            _say('${_short(f.displayName)} turns ${_short(r.name)} against you',
+                kind: 'foe');
+          }
+      }
+    }
   }
 
   void _planIntents() {
@@ -388,6 +453,13 @@ class Battle {
         return true;
       }
 
+      // `chorus` reads the board before it swings, so killing its friends is
+      // the counterplay rather than a consolation.
+      if (f.def!.passive == 'chorus') {
+        final friends = foes.where((x) => x.alive && x != f).length;
+        if (friends > 0) f.add('strength', friends);
+      }
+
       _act(f);
       if (f.mods.contains('swift') && f.turnsTaken % 3 == 2 && f.alive && !ended) {
         f.patternIdx++;
@@ -395,19 +467,81 @@ class Battle {
         _say('${f.displayName} is SWIFT — it moves twice.');
         _act(f);
       }
+      _extraActions(f);
+
       f.turnsTaken++;
       f.patternIdx++;
       _tickEnd(f);
-      if (f.def!.passive == 'sprout' && f.alive) _heal(f, 4);
-      if (f.def!.passive == 'matron' && f.alive) {
-        _heal(f, f.def!.tier >= 2 ? 18 : (f.def!.tier == 1 ? 15 : 12));
-      }
+      _foeEndOfTurn(f);
+      f.hurtThisRound = false;
       _checkEnd();
       return true;
     }
     actingFoe = -1;
     inFoePhase = false;
     return false;
+  }
+
+  /// Passives that buy a foe a second swing. Kept separate from [_act] so a
+  /// foe can never chain them into an unbounded loop.
+  void _extraActions(Combatant f) {
+    if (!f.alive || ended) return;
+    void again(String why) {
+      f.patternIdx++;
+      _planIntents();
+      _say('${_short(f.displayName)} — $why', kind: 'foe');
+      _act(f);
+    }
+
+    switch (f.def!.passive) {
+      case 'wind':
+        if (f.turnsTaken == 0) again('moves on the wind, and moves again');
+      case 'hourglass':
+        if (f.turnsTaken % 3 == 2) again('the hour turns over');
+      case 'rewind':
+        if (!f.hurtThisRound) again('nothing touched it, so it does it again');
+      case 'storm':
+        final every = f.def!.tier >= 2 ? 3 : 4;
+        if (f.turnsTaken % every == every - 1) {
+          final v = 6 + f.def!.tier * 5;
+          _say('${_short(f.displayName)} breaks over the whole board', kind: 'foe');
+          _damage(f, hero, v, isAttack: true, elem: Elem.volt);
+          for (final o in foes.where((x) => x.alive && x != f)) {
+            _applyStatus(o, 'shock', 1);
+          }
+        }
+      case 'toll':
+        _applyStatus(hero, 'vulnerable', 1);
+    }
+  }
+
+  /// Everything a foe does once its own swing is over.
+  void _foeEndOfTurn(Combatant f) {
+    if (!f.alive) return;
+    switch (f.def!.passive) {
+      case 'sprout':
+        _heal(f, 4);
+      case 'matron':
+        _heal(f, f.def!.tier >= 2 ? 18 : (f.def!.tier == 1 ? 15 : 12));
+      case 'regenerator':
+        if (!f.hurtThisRound) {
+          _heal(f, 8 + f.def!.tier * 4);
+          _pop(f, 'MENDS', 'status');
+        }
+      case 'hunger':
+        f.maxHp += 4;
+        _heal(f, 4);
+      case 'warden':
+        for (final o in foes.where((x) => x.alive && x != f)) {
+          o.block += 6;
+          _pop(o, '+6', 'block');
+        }
+      case 'marshal':
+        final amt = f.def!.tier >= 1 ? 2 : 1;
+        for (final o in foes.where((x) => x.alive && x != f)) {
+          o.add('strength', amt);
+        }
+    }
   }
 
   /// Phase 3 — hand back to you.
@@ -444,6 +578,8 @@ class Battle {
         f.block += it.value;
         _pop(f, '+${it.value}', 'block');
         _say('${_short(who)} guards ${it.value}', kind: 'foe');
+        if (f.def!.passive == 'zeal') f.add('strength', f.def!.tier >= 2 ? 2 : 1);
+        if (f.def!.passive == 'frostheart') _applyStatus(hero, 'rime', 1);
       case IntentKind.buff:
         f.add(it.status ?? 'strength', it.statusAmt);
         _pop(f, '${it.status ?? 'strength'} +${it.statusAmt}', 'status');
@@ -552,6 +688,19 @@ class Battle {
     hand.remove(c);
     playedThisTurn++;
     if (c.def.elem != Elem.none) elemsThisTurn.add(c.def.elem);
+    if (c.def.type == CardType.skill) {
+      for (final f in foes.where((x) => x.alive && x.def!.passive == 'glutton')) {
+        _heal(f, 6 + f.def!.tier * 2);
+      }
+    }
+    // A prophet never hides its plan — it changes it. You always see the new
+    // intent, you just cannot count on the old one.
+    var reread = false;
+    for (final f in foes.where((x) => x.alive && x.def!.passive == 'prophet')) {
+      f.patternIdx++;
+      reread = true;
+    }
+    if (reread) _planIntents();
 
     var repeats = 1;
     if (hero.s('echo') > 0) {
@@ -762,7 +911,9 @@ class Battle {
               ? _resolveTargets(fx.target, idx)
               : targets;
           for (final t in ts) {
-            if (t.alive) _damage(hero, t, fx.value, isAttack: true, elem: elem);
+            if (t.alive) {
+              _damage(hero, t, fx.value, isAttack: true, elem: elem, multi: fx.times > 1);
+            }
           }
         }
       case FxKind.pierce:
@@ -911,8 +1062,23 @@ class Battle {
 
   // ------------------------------------------------------------ combat math
   int _damage(Combatant src, Combatant dst, int raw,
-      {bool isAttack = true, bool pierce = false, Elem elem = Elem.none}) {
+      {bool isAttack = true, bool pierce = false, Elem elem = Elem.none, bool multi = false}) {
     if (raw <= 0 || !dst.alive) return 0;
+
+    // Two foes refuse damage outright rather than reducing it. Both are meant
+    // to redirect the player's turn, so they say so instead of silently eating
+    // the hit.
+    if (!dst.isPlayer && dst.phasedOut) {
+      _pop(dst, 'PHASED', 'status');
+      return 0;
+    }
+    if (!dst.isPlayer &&
+        dst.def!.passive == 'shroud' &&
+        foes.any((f) => f.alive && f != dst)) {
+      _pop(dst, 'SHROUDED', 'status');
+      return 0;
+    }
+
     var v = raw.toDouble();
 
     if (isAttack) v += src.s('strength');
@@ -935,6 +1101,7 @@ class Battle {
     if (!dst.isPlayer && dst.def!.passive == 'pity' && dst.hp * 2 > dst.maxHp) v *= .5;
     if (!dst.isPlayer && dst.mods.contains('hollow')) v *= .9;
     if (!dst.isPlayer && dst.def!.passive == 'swarm' && raw >= 15) v *= .7;
+    if (!dst.isPlayer && dst.def!.passive == 'bulwark' && multi) v *= .6;
 
     var amount = v.round();
     if (amount < 1) amount = 1;
@@ -995,6 +1162,10 @@ class Battle {
         _pop(hero, '-$back', 'damage');
       }
     }
+    if (!dst.isPlayer) {
+      dst.hurtThisRound = true;
+      if (dst.def!.passive == 'enrage') dst.add('strength', 2);
+    }
     if (!dst.isPlayer && dst.def!.passive == 'leech') _heal(dst, amount ~/ 2);
     if (!dst.isPlayer && dst.def!.passive == 'kintsugi' && dst.hp * 2 < dst.maxHp && !dst.phaseTwo) {
       dst.phaseTwo = true;
@@ -1002,7 +1173,12 @@ class Battle {
     }
 
     if (dst.hp <= 0) _onDeath(dst);
-    if (dst.isPlayer && dst.hp <= 0) _tryCheatDeath();
+    if (dst.isPlayer && dst.hp <= 0) {
+      _tryCheatDeath();
+      // A cheated death restores a positive pool; anything else floors at zero
+      // so the run state never records a negative HP.
+      if (dst.hp < 0) dst.hp = 0;
+    }
     return amount;
   }
 
@@ -1022,6 +1198,21 @@ class Battle {
     if (f.isPlayer) return;
     f.hp = 0;
     _say('${_short(f.displayName)} is erased', kind: 'death');
+
+    // Two foes cost you something for killing them, so "focus it down" is not
+    // automatically the right answer.
+    if (f.def!.passive == 'spite') {
+      final v = 10 + f.def!.tier * 6;
+      _say('${_short(f.displayName)} comes apart across you', kind: 'foe');
+      _hurt(hero, v, f.displayName);
+    }
+    if (f.def!.passive == 'tether') {
+      for (final o in foes.where((x) => x.alive)) {
+        o.add('strength', 3);
+      }
+      _say('The others take up what it was carrying', kind: 'foe');
+    }
+
     if (has('shadow_dice')) _heal(hero, 5);
     if (hero.s('gravetithe') > 0) {
       _heal(hero, hero.s('gravetithe'));
@@ -1152,6 +1343,10 @@ class Battle {
     if (t.s('decay') > 0) return;
     if (t.isPlayer && has('ouroboros_true')) return;
     var amt = v;
+    // A parasite on the board makes every heal you own worth half.
+    if (t.isPlayer && foes.any((f) => f.alive && f.def!.passive == 'parasite')) {
+      amt = math.max(1, amt ~/ 2);
+    }
     if (t.isPlayer && t.s('radiance') > 0) amt = (amt * 1.5).round();
     final before = t.hp;
     t.hp = math.min(t.maxHp, t.hp + amt);
@@ -1174,7 +1369,12 @@ class Battle {
     if (v <= 0) return;
     t.hp -= v;
     _pop(t, '-$v', 'damage');
-    if (t.hp <= 0 && t.isPlayer) _tryCheatDeath();
+    if (t.hp <= 0 && t.isPlayer) {
+      _tryCheatDeath();
+      // Nothing downstream should ever see a negative pool — the run state is
+      // written straight out of this number.
+      if (t.hp < 0) t.hp = 0;
+    }
   }
 
   void _tickEnd(Combatant t) {

@@ -1,4 +1,5 @@
 import '../engine/core.dart';
+import 'enemies_b.dart';
 
 Intent atk(int v, {int times = 1, String? s, int amt = 0, Elem e = Elem.none}) =>
     Intent(times > 1 ? IntentKind.attackMulti : IntentKind.attack,
@@ -330,6 +331,7 @@ final List<EnemyDef> kAllEnemies = [
   ...kEnemiesAct3,
   ...kElites,
   ...kBosses,
+  ...kEnemiesB,
 ];
 
 final Map<String, EnemyDef> kEnemyById = {for (final e in kAllEnemies) e.id: e};
@@ -337,10 +339,17 @@ final Map<String, EnemyDef> kEnemyById = {for (final e in kAllEnemies) e.id: e};
 EnemyDef enemyDef(String id) => kEnemyById[id] ?? kEnemiesAct1.first;
 
 List<EnemyDef> normalPool(int act) => switch (act) {
-      1 => kEnemiesAct1,
-      2 => kEnemiesAct2,
-      _ => kEnemiesAct3,
+      1 => [...kEnemiesAct1, ...kEnemiesAct1B],
+      2 => [...kEnemiesAct2, ...kEnemiesAct2B],
+      _ => [...kEnemiesAct3, ...kEnemiesAct3B],
     };
 
-List<EnemyDef> elitePool(int act) => kElites.where((e) => e.act == act).toList();
-List<EnemyDef> bossPool(int act) => kBosses.where((e) => e.act == act).toList();
+List<EnemyDef> elitePool(int act) => [
+      ...kElites.where((e) => e.act == act),
+      ...[...kElitesAct1B, ...kElitesAct2B, ...kElitesAct3B].where((e) => e.act == act),
+    ];
+
+List<EnemyDef> bossPool(int act) => [
+      ...kBosses.where((e) => e.act == act),
+      ...[...kBossesAct1B, ...kBossesAct2B, ...kBossesAct3B].where((e) => e.act == act),
+    ];
