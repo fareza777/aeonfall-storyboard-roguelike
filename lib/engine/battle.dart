@@ -293,6 +293,10 @@ class Battle {
       _hurt(hero, hero.s('stormheart') >= 2 ? 1 : 3, 'Stormheart');
     }
 
+    // Stealth covered the foe phase that has just finished; it expires now
+    // rather than at the end of your own turn.
+    hero.clear('stealth');
+
     if (hero.s('fortify') <= 0) hero.block = 0;
     if (hero.s('guardturn') > 0) _gainBlock(hero, hero.s('guardturn'));
     if (hero.s('ascension') > 0) {
@@ -1629,7 +1633,12 @@ class Battle {
         if (t.hp <= 0) _onDeath(t);
       }
     }
-    for (final k in ['rime', 'vulnerable', 'weak', 'radiance', 'overcharge', 'silence', 'stealth', 'entangle']) {
+    // 'stealth' is deliberately absent. It says "foes cannot target you this
+    // turn", and this runs at the end of your turn — *before* the foes move.
+    // Ticking it here removed it at exactly the moment it was meant to work,
+    // so Stealth never once did anything. It is cleared at the top of your
+    // next turn instead, in _beginTurn.
+    for (final k in ['rime', 'vulnerable', 'weak', 'radiance', 'overcharge', 'silence', 'entangle']) {
       if (t.s(k) > 0) t.add(k, -1);
     }
     if (t.auraTurns > 0) {

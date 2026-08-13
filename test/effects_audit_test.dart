@@ -160,6 +160,59 @@ void main() {
         reason: 'these carry effects on a dead trigger:\n  ${dead.join("\n  ")}');
   });
 
+  group('Stealth', () {
+    // "Foes cannot target you this turn." It was decremented by the hero's
+    // end-of-turn tick, which runs *before* the foes move — so it expired at
+    // exactly the moment it was supposed to work and never did anything.
+    test('actually stops the foes that swing next', () {
+      final run = bare();
+      final b = fight(run, foes: ['cinder_wretch', 'ash_hound']);
+      b.hero.add('stealth', 1);
+      b.hero.block = 0;
+      final hp = b.hero.hp;
+
+      b.endTurn(); // your end of turn, then every foe acts, then turn two
+
+      expect(b.hero.hp, hp, reason: 'Stealth did not stop the attacks');
+    });
+
+    test('covers one foe phase and no more', () {
+      final run = bare();
+      final b = fight(run, foes: ['cinder_wretch']);
+      b.hero.add('stealth', 1);
+      b.hero.block = 0;
+
+      b.endTurn();
+      expect(b.hero.s('stealth'), 0, reason: 'Stealth outlived its turn');
+
+      final hp = b.hero.hp;
+      b.hero.block = 0;
+      b.endTurn();
+      expect(b.hero.hp, lessThan(hp),
+          reason: 'Stealth is still protecting you a turn later');
+    });
+
+    test('without it, the same foes do land', () {
+      final run = bare();
+      final b = fight(run, foes: ['cinder_wretch', 'ash_hound']);
+      b.hero.block = 0;
+      final hp = b.hero.hp;
+      b.endTurn();
+      expect(b.hero.hp, lessThan(hp),
+          reason: 'the control case took no damage — the test proves nothing');
+    });
+
+    test('the Veil Water draught grants a Stealth that works', () {
+      final run = bare()..addPotion('veilwater');
+      final b = fight(run, foes: ['cinder_wretch', 'ash_hound']);
+      b.hero.block = 0;
+      expect(b.usePotion('veilwater'), isTrue);
+      final hp = b.hero.hp;
+      b.endTurn();
+      expect(b.hero.hp, hp, reason: 'Veil Water did not protect you');
+    });
+  });
+
   test('Silver Thread halves what an event costs you', () {
     int lost(bool withThread) {
       final run = bare();

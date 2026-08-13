@@ -59,86 +59,111 @@ class _HubScreenState extends State<HubScreen> {
               Text('THE SANCTUM BETWEEN FALLS', style: Ae.label(13, c: Ae.goldSoft)),
               const SizedBox(height: 16),
               _stats(m),
+              // Bottom-aligned where it belongs — the buttons sit under the
+              // thumb — but the column is given at least the viewport's height
+              // so it can scroll instead of overflowing on a short screen.
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(26, 12, 26, 4),
-                  child: Column(
-                    children: [
-                    if (g.hasRun) ...[
-                      AeButton(
-                        label: 'Continue Run',
-                        big: true,
-                        sub: '${g.run!.vessel.title} · Act ${g.run!.act} · '
-                            '${g.run!.hp}/${g.run!.maxHp} HP',
-                        onTap: () {
-                          Audio.i.sfx('confirm');
-                          Navigator.of(context).push(
-                              MaterialPageRoute(builder: (_) => const MapScreen()));
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      AeButton(
-                        label: 'Abandon Run',
-                        color: Ae.blood,
-                        onTap: () => _confirmAbandon(context),
-                      ),
-                    ] else
-                      AeButton(
-                        label: 'Begin a New Run',
-                        big: true,
-                        sub: 'Choose a Vessel and fall again',
-                        onTap: () {
-                          Audio.i.sfx('confirm');
-                          Navigator.of(context).push(MaterialPageRoute(
-                              builder: (_) => const VesselSelectScreen()));
-                        },
-                      ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: AeButton(
-                            label: 'Trailer',
-                            color: Ae.volt,
-                            onTap: () {
-                              Audio.i.sfx('tap');
-                              Navigator.of(context).push(MaterialPageRoute(
-                                  builder: (_) => const TrailerScreen()));
-                            },
-                          ),
+                child: LayoutBuilder(
+                  builder: (_, box) => SingleChildScrollView(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minHeight: box.maxHeight),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(26, 12, 26, 4),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            if (g.hasRun) ...[
+                              AeButton(
+                                label: 'Continue Run',
+                                big: true,
+                                sub:
+                                    '${g.run!.vessel.title} · Act ${g.run!.act} · '
+                                    '${g.run!.hp}/${g.run!.maxHp} HP',
+                                onTap: () {
+                                  Audio.i.sfx('confirm');
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(builder: (_) => const MapScreen()),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              AeButton(
+                                label: 'Abandon Run',
+                                color: Ae.blood,
+                                onTap: () => _confirmAbandon(context),
+                              ),
+                            ] else
+                              AeButton(
+                                label: 'Begin a New Run',
+                                big: true,
+                                sub: 'Choose a Vessel and fall again',
+                                onTap: () {
+                                  Audio.i.sfx('confirm');
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const VesselSelectScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: AeButton(
+                                    label: 'Trailer',
+                                    color: Ae.volt,
+                                    onTap: () {
+                                      Audio.i.sfx('tap');
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => const TrailerScreen(),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: AeButton(
+                                    label: 'Codex',
+                                    color: Ae.frost,
+                                    onTap: () {
+                                      Audio.i.sfx('tap');
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => const CodexScreen(),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            AeButton(
+                              label: 'How to Play',
+                              sub: 'Rules, elements and the story in plain language',
+                              color: Ae.good,
+                              onTap: () {
+                                Audio.i.sfx('tap');
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const HowToPlayScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            AeButton(
+                              label: 'The Sanctum  ·  ${m.shards} Shards',
+                              color: Ae.lumen,
+                              onTap: () => _openSanctum(context),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: AeButton(
-                            label: 'Codex',
-                            color: Ae.frost,
-                            onTap: () {
-                              Audio.i.sfx('tap');
-                              Navigator.of(context).push(
-                                  MaterialPageRoute(builder: (_) => const CodexScreen()));
-                            },
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                    const SizedBox(height: 12),
-                    AeButton(
-                      label: 'How to Play',
-                      sub: 'Rules, elements and the story in plain language',
-                      color: Ae.good,
-                      onTap: () {
-                        Audio.i.sfx('tap');
-                        Navigator.of(context).push(MaterialPageRoute(
-                            builder: (_) => const HowToPlayScreen()));
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    AeButton(
-                      label: 'The Sanctum  ·  ${m.shards} Shards',
-                      color: Ae.lumen,
-                      onTap: () => _openSanctum(context),
-                    ),
-                    ],
                   ),
                 ),
               ),
@@ -153,19 +178,19 @@ class _HubScreenState extends State<HubScreen> {
   }
 
   Widget _stats(m) => Wrap(
-        spacing: 10,
-        runSpacing: 8,
-        alignment: WrapAlignment.center,
-        children: [
-          _pill('RUNS', '${m.runs}'),
-          _pill('FINISHED', '${m.wins}'),
-          _pill('ENDINGS', '${m.endings.length}/12'),
-          GestureDetector(
-            onTap: () => _showAscensions(m.ascension),
-            child: _pill('ASCENSION', '${m.ascension} ›'),
-          ),
-        ],
-      );
+    spacing: 10,
+    runSpacing: 8,
+    alignment: WrapAlignment.center,
+    children: [
+      _pill('RUNS', '${m.runs}'),
+      _pill('FINISHED', '${m.wins}'),
+      _pill('ENDINGS', '${m.endings.length}/12'),
+      GestureDetector(
+        onTap: () => _showAscensions(m.ascension),
+        child: _pill('ASCENSION', '${m.ascension} ›'),
+      ),
+    ],
+  );
 
   /// The twenty rules, with the ones currently in force marked. A player at a
   /// high Ascension is playing a different game and has to be able to read
@@ -194,18 +219,21 @@ class _HubScreenState extends State<HubScreen> {
               children: [
                 SizedBox(
                   width: 30,
-                  child: Text('${t.level}',
-                      style: Ae.display(19, c: on ? Ae.gold : Ae.dim)),
+                  child: Text(
+                    '${t.level}',
+                    style: Ae.display(19, c: on ? Ae.gold : Ae.dim),
+                  ),
                 ),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(t.title.toUpperCase(),
-                          style: Ae.label(13.5, c: on ? Ae.bone : Ae.dim)),
+                      Text(
+                        t.title.toUpperCase(),
+                        style: Ae.label(13.5, c: on ? Ae.bone : Ae.dim),
+                      ),
                       const SizedBox(height: 4),
-                      Text(t.desc,
-                          style: Ae.body(15, c: on ? Ae.bone : Ae.dim, h: 1.45)),
+                      Text(t.desc, style: Ae.body(15, c: on ? Ae.bone : Ae.dim, h: 1.45)),
                     ],
                   ),
                 ),
@@ -223,61 +251,64 @@ class _HubScreenState extends State<HubScreen> {
   }
 
   Widget _pill(String k, String v) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: Ae.ink2.withValues(alpha: .8),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Ae.panelHi),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Text('$k ', style: Ae.body(12, c: Ae.dim, w: 700)),
-          Text(v, style: Ae.body(15, c: Ae.gold, w: 800)),
-        ]),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+    decoration: BoxDecoration(
+      color: Ae.ink2.withValues(alpha: .8),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: Ae.panelHi),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('$k ', style: Ae.body(12, c: Ae.dim, w: 700)),
+        Text(v, style: Ae.body(15, c: Ae.gold, w: 800)),
+      ],
+    ),
+  );
 
   Widget _settings(m) => Wrap(
-        alignment: WrapAlignment.center,
-        spacing: 12,
-        runSpacing: 10,
-        children: [
-          _toggle('MUSIC', m.music, () {
-            setState(() => m.music = !m.music);
-            Audio.i.setMusic(m.music);
-            if (m.music) Audio.i.music('hub');
-            Game.i.saveMeta();
-          }),
-          _toggle('SOUND', m.sfx, () {
-            setState(() => m.sfx = !m.sfx);
-            Audio.i.sfxOn = m.sfx;
-            Audio.i.sfx('tap');
-            Game.i.saveMeta();
-          }),
-          GestureDetector(
-            onTap: () => showRunHistory(context),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-              decoration: BoxDecoration(
-                color: Ae.ink2,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Ae.panelHi, width: 1.4),
-              ),
-              child: Text('THE DRAFTS', style: Ae.label(13, c: Ae.bone)),
-            ),
+    alignment: WrapAlignment.center,
+    spacing: 12,
+    runSpacing: 10,
+    children: [
+      _toggle('MUSIC', m.music, () {
+        setState(() => m.music = !m.music);
+        Audio.i.setMusic(m.music);
+        if (m.music) Audio.i.music('hub');
+        Game.i.saveMeta();
+      }),
+      _toggle('SOUND', m.sfx, () {
+        setState(() => m.sfx = !m.sfx);
+        Audio.i.sfxOn = m.sfx;
+        Audio.i.sfx('tap');
+        Game.i.saveMeta();
+      }),
+      GestureDetector(
+        onTap: () => showRunHistory(context),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+          decoration: BoxDecoration(
+            color: Ae.ink2,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Ae.panelHi, width: 1.4),
           ),
-          GestureDetector(
-            onTap: _openAccess,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-              decoration: BoxDecoration(
-                color: Ae.ink2,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Ae.panelHi, width: 1.4),
-              ),
-              child: Text('READABILITY', style: Ae.label(13, c: Ae.bone)),
-            ),
+          child: Text('THE DRAFTS', style: Ae.label(13, c: Ae.bone)),
+        ),
+      ),
+      GestureDetector(
+        onTap: _openAccess,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+          decoration: BoxDecoration(
+            color: Ae.ink2,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Ae.panelHi, width: 1.4),
           ),
-        ],
-      );
+          child: Text('READABILITY', style: Ae.label(13, c: Ae.bone)),
+        ),
+      ),
+    ],
+  );
 
   /// Text size, colour-blind element shapes, motion and haptics. Every one of
   /// these is somebody's reason for being able to play at all.
@@ -319,8 +350,9 @@ class _HubScreenState extends State<HubScreen> {
                                   : Ae.ink2,
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
-                                  color: m.textScale == s ? Ae.gold : Ae.panelHi,
-                                  width: 1.4),
+                                color: m.textScale == s ? Ae.gold : Ae.panelHi,
+                                width: 1.4,
+                              ),
                             ),
                             child: Text(
                               switch (s) {
@@ -329,8 +361,7 @@ class _HubScreenState extends State<HubScreen> {
                                 1.15 => 'LARGE',
                                 _ => 'LARGEST',
                               },
-                              style: Ae.label(11.5,
-                                  c: m.textScale == s ? Ae.bone : Ae.dim),
+                              style: Ae.label(11.5, c: m.textScale == s ? Ae.bone : Ae.dim),
                             ),
                           ),
                         ),
@@ -339,8 +370,10 @@ class _HubScreenState extends State<HubScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              Text('The quick brown fox jumps over the lazy dog.',
-                  style: Ae.body(16 * m.textScale, h: 1.5)),
+              Text(
+                'The quick brown fox jumps over the lazy dog.',
+                style: Ae.body(16 * m.textScale, h: 1.5),
+              ),
               const SizedBox(height: 20),
               const AeRule(),
               const SizedBox(height: 16),
@@ -369,48 +402,48 @@ class _HubScreenState extends State<HubScreen> {
     );
   }
 
-  Widget _accessRow(String title, String desc, bool on, VoidCallback tap) =>
-      Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: GestureDetector(
-          onTap: tap,
-          child: AePanel(
-            border: on ? Ae.gold : Ae.panelHi,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title, style: Ae.label(13, c: on ? Ae.bone : Ae.dim)),
-                      const SizedBox(height: 3),
-                      Text(desc, style: Ae.body(14, c: Ae.dim, h: 1.35)),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Text(on ? 'ON' : 'OFF',
-                    style: Ae.label(13, c: on ? Ae.gold : Ae.dim)),
-              ],
+  Widget _accessRow(String title, String desc, bool on, VoidCallback tap) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: GestureDetector(
+      onTap: tap,
+      child: AePanel(
+        border: on ? Ae.gold : Ae.panelHi,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: Ae.label(13, c: on ? Ae.bone : Ae.dim)),
+                  const SizedBox(height: 3),
+                  Text(desc, style: Ae.body(14, c: Ae.dim, h: 1.35)),
+                ],
+              ),
             ),
-          ),
+            const SizedBox(width: 10),
+            Text(on ? 'ON' : 'OFF', style: Ae.label(13, c: on ? Ae.gold : Ae.dim)),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 
   Widget _toggle(String label, bool on, VoidCallback tap) => GestureDetector(
-        onTap: tap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-          decoration: BoxDecoration(
-            color: on ? Ae.gold.withValues(alpha: .16) : Ae.ink2,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: on ? Ae.gold : Ae.panelHi, width: 1.4),
-          ),
-          child: Text('$label  ${on ? "ON" : "OFF"}',
-              style: Ae.label(13, c: on ? Ae.bone : Ae.dim)),
-        ),
-      );
+    onTap: tap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+      decoration: BoxDecoration(
+        color: on ? Ae.gold.withValues(alpha: .16) : Ae.ink2,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: on ? Ae.gold : Ae.panelHi, width: 1.4),
+      ),
+      child: Text(
+        '$label  ${on ? "ON" : "OFF"}',
+        style: Ae.label(13, c: on ? Ae.bone : Ae.dim),
+      ),
+    ),
+  );
 
   void _confirmAbandon(BuildContext context) {
     showDialog<void>(
@@ -419,13 +452,15 @@ class _HubScreenState extends State<HubScreen> {
         backgroundColor: Ae.panel,
         title: Text('Abandon this draft?', style: Ae.display(20)),
         content: Text(
-            'The run ends here and its Aeon Shards are lost. The Sanctum keeps what you '
-            'have already earned.',
-            style: Ae.body(16, c: Ae.dim)),
+          'The run ends here and its Aeon Shards are lost. The Sanctum keeps what you '
+          'have already earned.',
+          style: Ae.body(16, c: Ae.dim),
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Keep going', style: Ae.body(16, c: Ae.gold))),
+            onPressed: () => Navigator.pop(context),
+            child: Text('Keep going', style: Ae.body(16, c: Ae.gold)),
+          ),
           TextButton(
             onPressed: () {
               Game.i.abandonRun();
@@ -465,10 +500,7 @@ const _upgrades = <_Upgrade>[
   _Upgrade('archive', 'The Archive', 'Frame rewards always offer one extra choice.', 280),
 ];
 
-const _vesselUnlocks = <String, int>{
-  'umbralnyx': 400,
-  'lumenherald': 480,
-};
+const _vesselUnlocks = <String, int>{'umbralnyx': 400, 'lumenherald': 480};
 
 class _SanctumSheet extends StatefulWidget {
   const _SanctumSheet();
@@ -496,7 +528,9 @@ class _SanctumSheetState extends State<_SanctumSheet> {
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
             child: Row(
               children: [
-                Expanded(child: Heading('THE SANCTUM', sub: 'What survives the Fall', size: 24)),
+                Expanded(
+                  child: Heading('THE SANCTUM', sub: 'What survives the Fall', size: 24),
+                ),
                 Text('${m.shards}', style: Ae.display(26, c: Ae.gold)),
                 Text('  SHARDS', style: Ae.label(12)),
               ],
@@ -508,8 +542,16 @@ class _SanctumSheetState extends State<_SanctumSheet> {
               children: [
                 Text('PERMANENT BOONS', style: Ae.label(14)),
                 const SizedBox(height: 10),
-                for (final u in _upgrades) _row(m, u.id, u.name, u.desc, u.cost,
-                    owned: m.upgrades.contains(u.id), onBuy: () => m.upgrades.add(u.id)),
+                for (final u in _upgrades)
+                  _row(
+                    m,
+                    u.id,
+                    u.name,
+                    u.desc,
+                    u.cost,
+                    owned: m.upgrades.contains(u.id),
+                    onBuy: () => m.upgrades.add(u.id),
+                  ),
                 const SizedBox(height: 22),
                 Text('VESSELS', style: Ae.label(14)),
                 const SizedBox(height: 10),
@@ -542,8 +584,15 @@ class _SanctumSheetState extends State<_SanctumSheet> {
     );
   }
 
-  Widget _row(m, String id, String name, String desc, int cost,
-      {required bool owned, required VoidCallback onBuy}) {
+  Widget _row(
+    m,
+    String id,
+    String name,
+    String desc,
+    int cost, {
+    required bool owned,
+    required VoidCallback onBuy,
+  }) {
     final afford = m.shards >= cost;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -555,7 +604,10 @@ class _SanctumSheetState extends State<_SanctumSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name.toUpperCase(), style: Ae.label(15, c: owned ? Ae.good : Ae.bone)),
+                  Text(
+                    name.toUpperCase(),
+                    style: Ae.label(15, c: owned ? Ae.good : Ae.bone),
+                  ),
                   const SizedBox(height: 5),
                   Text(desc, style: Ae.body(15, c: Ae.dim)),
                 ],
@@ -582,8 +634,10 @@ class _SanctumSheetState extends State<_SanctumSheet> {
                     borderRadius: BorderRadius.circular(9),
                     border: Border.all(color: afford ? Ae.gold : Ae.panelHi, width: 1.4),
                   ),
-                  child: Text('$cost',
-                      style: Ae.body(16, w: 800, c: afford ? Ae.gold : Ae.dim)),
+                  child: Text(
+                    '$cost',
+                    style: Ae.body(16, w: 800, c: afford ? Ae.gold : Ae.dim),
+                  ),
                 ),
               ),
           ],
