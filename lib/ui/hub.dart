@@ -59,11 +59,11 @@ class _HubScreenState extends State<HubScreen> {
               Text('THE SANCTUM BETWEEN FALLS', style: Ae.label(13, c: Ae.goldSoft)),
               const SizedBox(height: 16),
               _stats(m),
-              const Spacer(),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 26),
-                child: Column(
-                  children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(26, 12, 26, 4),
+                  child: Column(
+                    children: [
                     if (g.hasRun) ...[
                       AeButton(
                         label: 'Continue Run',
@@ -138,10 +138,11 @@ class _HubScreenState extends State<HubScreen> {
                       color: Ae.lumen,
                       onTap: () => _openSanctum(context),
                     ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               _settings(m),
               const SizedBox(height: 10),
             ],

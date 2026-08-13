@@ -161,19 +161,25 @@ class Game extends ChangeNotifier {
 
   /// Called when a node is fully resolved.
   void completeNode(int nodeId) {
-    final map = run!.map!;
-    final node = map.byId(nodeId);
+    final r = run;
+    if (r == null) return;
+    final map = r.map!;
+    // A second tap on a reward's Continue arrives after the act has already
+    // turned over, so this id belongs to the previous act's map. Completing
+    // "whatever node happens to be first" would corrupt the new act.
+    final node = map.tryById(nodeId);
+    if (node == null || node.visited) return;
     node.visited = true;
     map.currentId = nodeId;
     map.available = List<int>.from(node.next);
-    run!.floor = node.layer;
-    run!.totalFloors++;
+    r.floor = node.layer;
+    r.totalFloors++;
     // One reading per floor — the run's pulse line on the summary screen.
-    run!.hpTrail.add(run!.hp);
-    if (run!.relics.contains('ash_locket')) run!.heal(6);
-    if (meta.deepestAct < run!.act) {
-      meta.deepestAct = run!.act;
-      if (run!.act >= 3) meta.vessels.add('paradox');
+    r.hpTrail.add(r.hp);
+    if (r.relics.contains('ash_locket')) r.heal(6);
+    if (meta.deepestAct < r.act) {
+      meta.deepestAct = r.act;
+      if (r.act >= 3) meta.vessels.add('paradox');
     }
     save();
     notifyListeners();

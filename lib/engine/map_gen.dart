@@ -65,7 +65,19 @@ class StoryMap {
   int currentId = -1;
   List<int> available = [];
 
-  MapNode byId(int id) => nodes.firstWhere((n) => n.id == id);
+  /// Null when the id belongs to a different act's map. That happens more
+  /// easily than it sounds — a node id is captured when a battle starts and
+  /// used again when its reward is dismissed, and the act can turn over in
+  /// between. This used to be an unguarded `firstWhere`, which threw a
+  /// StateError out of a tap handler mid-route-transition.
+  MapNode? tryById(int id) {
+    for (final n in nodes) {
+      if (n.id == id) return n;
+    }
+    return null;
+  }
+
+  MapNode byId(int id) => tryById(id) ?? nodes.first;
   List<MapNode> atLayer(int l) => nodes.where((n) => n.layer == l).toList();
   int get width => nodes.fold(0, (m, n) => n.col > m ? n.col : m) + 1;
 

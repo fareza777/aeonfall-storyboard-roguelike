@@ -2,6 +2,7 @@ import 'package:aeonfall/engine/director.dart';
 import 'package:aeonfall/engine/map_gen.dart';
 import 'package:aeonfall/engine/run_state.dart';
 import 'package:aeonfall/game.dart';
+import 'package:aeonfall/ui/hub.dart';
 import 'package:aeonfall/ui/map_screen.dart';
 import 'package:aeonfall/ui/reward_screen.dart';
 import 'package:flutter/material.dart';
@@ -61,6 +62,35 @@ void main() {
     }
   });
 
+  test('a second Continue after the act turned over does not throw', () {
+    // The real sequence when a player taps the big button twice: the first
+    // tap advances the act, the second arrives with the old act's node id
+    // against the new act's map. StoryMap.byId was an unguarded firstWhere,
+    // so this threw a StateError out of a tap handler in the middle of a
+    // route transition — which is what left the screen blank.
+    final run = atBoss();
+    final bossId = run.map!.nodes.firstWhere((n) => n.type == NodeType.boss).id;
+
+    Game.i.completeNode(bossId);
+    Game.i.nextAct();
+
+    final act2Map = Game.i.run!.map!;
+    final before = act2Map.nodes.where((n) => n.visited).length;
+
+    expect(() => Game.i.completeNode(bossId), returnsNormally,
+        reason: 'the second tap threw');
+    expect(act2Map.nodes.where((n) => n.visited).length, before,
+        reason: 'the stale id marked a node in the new act as done');
+    expect(Game.i.run!.act, 2, reason: 'the second tap advanced something');
+  });
+
+  test('an id from another map never resolves to the wrong node', () {
+    final run = atBoss();
+    final map = run.map!;
+    expect(map.tryById(999999), isNull);
+    expect(map.tryById(map.nodes.first.id), isNotNull);
+  });
+
   testWidgets('the map still renders after the act turns over', (tester) async {
     tester.view.physicalSize = const Size(1080, 2340);
     tester.view.devicePixelRatio = 3.0;
@@ -106,6 +136,61 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.byType(MapScreen), findsOneWidget,
         reason: 'closing the act intro took the map with it');
+  });
+
+  testWidgets('the real navigation stack survives the act turning over',
+      (tester) async {
+    // The earlier version of this test pushed the reward onto a bare
+    // Navigator, which is NOT the stack the game has. The real one is
+    // Hub -> Map -> Battle, with the reward *replacing* Battle, and the
+    // act-advance then calling pushAndRemoveUntil against it.
+    tester.view.physicalSize = const Size(1080, 2340);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    final run = atBoss();
+    final bossId = run.map!.nodes.firstWhere((n) => n.type == NodeType.boss).id;
+    run.setFlag('intro_act2');
+
+    await tester.pumpWidget(const MaterialApp(home: HubScreen()));
+    await tester.pumpAndSettle(const Duration(seconds: 1));
+
+    final nav = tester.state<NavigatorState>(find.byType(Navigator).last);
+
+    // Hub -> Map (a plain push, as the Sanctum does)
+    nav.push(MaterialPageRoute(builder: (_) => const MapScreen()));
+    await tester.pumpAndSettle(const Duration(seconds: 1));
+
+    // Map -> the boss reward, which in the game replaces the battle screen.
+    nav.push(MaterialPageRoute(
+      builder: (_) => RewardScreen(
+        nodeId: bossId,
+        gold: 120,
+        relic: true,
+        cards: true,
+        isBoss: true,
+        title: 'THE ACT ENDS',
+        blurb: 'You are still here.',
+        art: 'site_treasure_room',
+      ),
+    ));
+    await tester.pumpAndSettle(const Duration(seconds: 1));
+    expect(tester.takeException(), isNull);
+
+    // Exactly what Continue does.
+    Game.i.completeNode(bossId);
+    Game.i.nextAct();
+    Game.i.run!.setFlag('intro_act2');
+    nav.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const MapScreen()),
+      (r) => r.isFirst,
+    );
+    await tester.pumpAndSettle(const Duration(seconds: 2));
+
+    expect(tester.takeException(), isNull,
+        reason: 'the act transition threw on the real stack');
+    expect(find.byType(MapScreen), findsOneWidget,
+        reason: 'nothing rendered — this is the white screen');
   });
 
   testWidgets('the boss reward screen builds and its Continue works',

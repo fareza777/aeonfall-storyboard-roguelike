@@ -70,7 +70,15 @@ class _RewardScreenState extends State<RewardScreen> {
     Audio.i.music(widget.isBoss ? 'hub' : 'map');
   }
 
+  /// Guards against a second tap. The act-advance route transition takes a
+  /// few hundred milliseconds, during which the button is still on screen and
+  /// still looks live — and a second tap used to re-run the whole sequence
+  /// against a map that had already been replaced.
+  bool _leaving = false;
+
   void _continue() {
+    if (_leaving) return;
+    _leaving = true;
     Audio.i.sfx('confirm');
     final g = Game.i;
     g.completeNode(widget.nodeId);

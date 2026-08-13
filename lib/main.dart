@@ -11,8 +11,42 @@ import 'ui/splash.dart';
 final RouteObserver<PageRoute<dynamic>> routeObserver =
     RouteObserver<PageRoute<dynamic>>();
 
+/// Replaces the framework's blank error box with something a player can read
+/// and, more importantly, leave. A build failure used to render nothing at
+/// all, which on a phone is an unrecoverable white screen with the music
+/// still playing.
+Widget _errorScreen(FlutterErrorDetails details) => Material(
+      color: Ae.ink,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(26),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('THE PAGE TORE', style: Ae.display(24)),
+              const SizedBox(height: 10),
+              Text(
+                'Something in this frame could not be drawn. Your run is saved '
+                'up to the last floor you finished.',
+                style: Ae.body(16, c: Ae.dim, h: 1.5),
+              ),
+              const SizedBox(height: 18),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Text('${details.exception}',
+                      style: Ae.body(12, c: Ae.blood, h: 1.4)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  ErrorWidget.builder = _errorScreen;
   SystemChrome.setPreferredOrientations(
       [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
