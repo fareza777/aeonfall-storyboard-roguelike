@@ -11,6 +11,20 @@ import 'ui/splash.dart';
 final RouteObserver<PageRoute<dynamic>> routeObserver =
     RouteObserver<PageRoute<dynamic>>();
 
+/// The handful of stack frames that belong to this app, which is the only
+/// part anyone can act on.
+String _ourFrames(StackTrace? stack) {
+  if (stack == null) return 'no stack';
+  final lines = stack
+      .toString()
+      .split('\n')
+      .where((l) => l.contains('package:aeonfall'))
+      .take(6)
+      .map((l) => l.replaceAll('package:aeonfall/', '').trim())
+      .toList();
+  return lines.isEmpty ? 'no aeonfall frames' : lines.join('\n');
+}
+
 /// Replaces the framework's blank error box with something a player can read
 /// and, more importantly, leave. A build failure used to render nothing at
 /// all, which on a phone is an unrecoverable white screen with the music
@@ -34,8 +48,19 @@ Widget _errorScreen(FlutterErrorDetails details) => Material(
               const SizedBox(height: 18),
               Flexible(
                 child: SingleChildScrollView(
-                  child: Text('${details.exception}',
-                      style: Ae.body(12, c: Ae.blood, h: 1.4)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${details.exception}',
+                          style: Ae.body(13, c: Ae.blood, h: 1.4)),
+                      const SizedBox(height: 12),
+                      // Only this app's own frames. A raw Flutter stack is
+                      // forty lines of framework noise and the one line that
+                      // matters is never on screen.
+                      Text(_ourFrames(details.stack),
+                          style: Ae.body(11.5, c: Ae.goldSoft, h: 1.45)),
+                    ],
+                  ),
                 ),
               ),
             ],

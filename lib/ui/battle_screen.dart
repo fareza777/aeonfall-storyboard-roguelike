@@ -499,6 +499,14 @@ class _BattleScreenState extends State<BattleScreen> with TickerProviderStateMix
       if (won) {
         Audio.i.sfx('victory', volume: .8);
         final gold = b.goldReward;
+        // Read everything off the battle *before* tearing it down. The route
+        // builder below is a closure that runs after this method returns, and
+        // `b` is `Game.i.battle!` — which endBattle() has just set to null.
+        // Only the boss branch touched it, which is why beating a boss was the
+        // one thing that blanked the screen.
+        final bossRelic = widget.type == NodeType.boss && b.foes.isNotEmpty
+            ? bossRelicFor(b.foes.first.def!.id)
+            : null;
         g.endBattle();
         Navigator.of(context).pushReplacement(MaterialPageRoute(
           builder: (_) => RewardScreen(
@@ -508,9 +516,7 @@ class _BattleScreenState extends State<BattleScreen> with TickerProviderStateMix
             cards: true,
             isBoss: widget.type == NodeType.boss,
             // Bosses leave a sigil that only they drop.
-            bossRelicId: widget.type == NodeType.boss && b.foes.isNotEmpty
-                ? bossRelicFor(b.foes.first.def!.id)
-                : null,
+            bossRelicId: bossRelic,
             title: switch (widget.type) {
               NodeType.boss => 'THE ACT ENDS',
               NodeType.elite => 'THE ELITE FALLS',

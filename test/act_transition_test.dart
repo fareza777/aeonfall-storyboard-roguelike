@@ -1,3 +1,8 @@
+import 'package:aeonfall/ui/widgets.dart';
+import 'package:aeonfall/data/enemies.dart';
+import 'package:aeonfall/engine/battle.dart';
+import 'package:aeonfall/engine/rng.dart';
+import 'package:aeonfall/ui/battle_screen.dart';
 import 'package:aeonfall/engine/director.dart';
 import 'package:aeonfall/engine/map_gen.dart';
 import 'package:aeonfall/engine/run_state.dart';
@@ -89,6 +94,53 @@ void main() {
     final map = run.map!;
     expect(map.tryById(999999), isNull);
     expect(map.tryById(map.nodes.first.id), isNotNull);
+  });
+
+  testWidgets('winning a boss fight hands off to the reward without throwing',
+      (tester) async {
+    // The regression: the victory handler called endBattle() — which sets
+    // Game.i.battle to null — and then built the reward route from a closure
+    // that still read `b.foes`, i.e. Game.i.battle!. Only the boss branch
+    // touched it, so only bosses blanked the screen.
+    tester.view.physicalSize = const Size(1080, 2340);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    final run = atBoss();
+    final bossNode = run.map!.nodes.firstWhere((n) => n.type == NodeType.boss);
+
+    final b = Battle(
+      run: run,
+      foeDefs: [enemyDef('the_illustrator')], // a boss that drops a sigil
+      rng: Rng(3),
+      kind: 'boss',
+    )..start();
+    Game.i.battle = b;
+
+    await tester.pumpWidget(MaterialApp(
+      home: BattleScreen(nodeId: bossNode.id, type: NodeType.boss),
+    ));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // Leave the boss on its last point of health, then finish it by tapping a
+    // frame — the screen's own victory path, not the engine's.
+    for (final f in b.foes) {
+      f.hp = 1;
+    }
+    final frame = find.byType(FrameCard);
+    expect(frame, findsWidgets, reason: 'no frames in hand to play');
+    await tester.tap(frame.first, warnIfMissed: false);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(b.victory, isTrue, reason: 'the boss did not actually die');
+
+    // The handler is behind a 700ms timer, then the route builds.
+    await tester.pump(const Duration(milliseconds: 900));
+    await tester.pumpAndSettle(const Duration(seconds: 2));
+
+    expect(tester.takeException(), isNull,
+        reason: 'the boss victory handoff threw');
+    expect(find.byType(RewardScreen), findsOneWidget,
+        reason: 'the reward screen never appeared');
   });
 
   testWidgets('the map still renders after the act turns over', (tester) async {
