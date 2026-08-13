@@ -160,10 +160,11 @@ final Map<String, RelicDef> kRelicById = {
 
 RelicDef relicDef(String id) => kRelicById[id] ?? kRelics.first;
 
+/// Sigils follow the same shape as frames: common early, rare earned.
 int relicWeight(RelicDef r, int act) => switch (r.rarity) {
-      Rarity.common => 50,
-      Rarity.uncommon => 34 + act * 2,
-      Rarity.rare => 12 + act * 4,
-      Rarity.mythic => act >= 2 ? 4 : 0,
+      Rarity.common => switch (act) { 1 => 66, 2 => 56, _ => 48 },
+      Rarity.uncommon => switch (act) { 1 => 30, 2 => 34, _ => 36 },
+      Rarity.rare => switch (act) { 1 => 4, 2 => 9, _ => 14 },
+      Rarity.mythic => switch (act) { 1 => 0, 2 => 1, _ => 2 },
       _ => 0,
     };

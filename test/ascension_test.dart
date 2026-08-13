@@ -168,9 +168,19 @@ void main() {
 
   test('14 halves how often draughts turn up', () {
     expect(AscensionRules(14).potionDropRate, lessThan(1.0));
-    // Elites and bosses still always drop one — the guarantee is the floor.
-    final d = Director(Director.newRun(6, 'ashcaller', metaAt(14)));
-    expect(d.potionDrop('elite'), isNotNull);
+
+    int drops(int asc) {
+      var n = 0;
+      for (var seed = 1; seed <= 200; seed++) {
+        final run = Director.newRun(seed * 6, 'ashcaller', metaAt(asc))
+          ..totalFloors = seed;
+        if (Director(run).potionDrop('elite') != null) n++;
+      }
+      return n;
+    }
+
+    expect(drops(14), lessThan(drops(13)),
+        reason: 'Ascension 14 did not thin the drops');
   });
 
   test('a full-Ascension run is meaningfully harder than a fresh one', () {

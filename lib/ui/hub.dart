@@ -25,6 +25,21 @@ class _HubScreenState extends State<HubScreen> {
   void initState() {
     super.initState();
     Audio.i.music('hub');
+    // Without this the Sanctum keeps whatever it was built with. Dying pops
+    // straight back here, and a screen that is not listening still offers to
+    // continue a run that no longer exists — you had to Abandon the corpse
+    // before the game would let you start again.
+    Game.i.addListener(_refresh);
+  }
+
+  void _refresh() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    Game.i.removeListener(_refresh);
+    super.dispose();
   }
 
   @override

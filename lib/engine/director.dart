@@ -68,20 +68,61 @@ class Director {
       case NodeType.elite:
         final pool = elitePool(run.act);
         final e = pool.isEmpty ? r.pick(kElites) : r.pick(pool);
-        if (run.act >= 2 && r.chance(.35)) {
+        // An escort becomes likelier the deeper into the act the elite is.
+        if (run.act >= 2 && r.chance(.20 + depth * .35)) {
           return [e, r.pick(normalPool(run.act))];
         }
         return [e];
       default:
         final pool = normalPool(run.act);
-        final count = _r.weighted([1, 2, 3], (n) => switch (n) { 1 => 30, 2 => 45, _ => 25 });
-        // Weight the pool towards elements the player is *not* built to beat.
+        // Foes used to be drawn flat from the whole act, so floor one could
+        // hand you the heaviest thing in the book and the last floor before
+        // the boss could hand you the lightest. Both read as the game not
+        // paying attention. Draw from a band that climbs with depth instead.
         final dom = run.dominantElement;
+        final count = _r.weighted([1, 2, 3], (n) => switch (n) {
+              1 => 44 - (depth * 30).round(),
+              2 => 42 + (depth * 6).round(),
+              _ => 6 + (depth * 30).round(),
+            });
         return List.generate(
           count,
-          (_) => r.weighted(pool, (e) => e.elem == dom ? 6 : 14),
+          (_) => r.weighted(pool, (e) {
+            // Element: still push towards what the deck is not built to beat.
+            final elemW = e.elem == dom ? 6 : 14;
+            return elemW * _depthFit(e, pool);
+          }),
         );
     }
+  }
+
+  /// How far through the current act the player is: 0 at the entry layer,
+  /// 1 at the boss door.
+  double get depth => (run.floor / 13).clamp(0.0, 1.0);
+
+  /// How well a foe's weight suits the current depth, as a multiplier.
+  ///
+  /// Never returns zero — a light foe deep in an act is fine as part of a
+  /// group of three, it just should not be the whole encounter. This shapes
+  /// the draw rather than censoring it.
+  int _depthFit(EnemyDef e, List<EnemyDef> pool) {
+    var lo = 9999.0, hi = 0.0;
+    for (final x in pool) {
+      final m = (x.hp + x.hpMax) / 2;
+      if (m < lo) lo = m;
+      if (m > hi) hi = m;
+    }
+    if (hi <= lo) return 10;
+
+    final mine = ((e.hp + e.hpMax) / 2 - lo) / (hi - lo); // 0 lightest, 1 heaviest
+    // Aim low early and high late. The band still overlaps its neighbours so
+    // encounters stay varied, but the falloff is squared — a soft linear band
+    // barely moved the average in acts whose pools have a narrow HP spread.
+    final target = 0.10 * (1 - depth) + 0.94 * depth;
+    final off = (mine - target).abs();
+    final near = (1.0 - off * 1.35).clamp(0.0, 1.0);
+    final fit = near * near;
+    return (fit * 60).round().clamp(1, 60);
   }
 
   /// The scripted first fight: a single weak foe whose element is deliberately
@@ -305,19 +346,22 @@ class Director {
   // ------------------------------------------------------------ draughts
   PotionDef _rollPotion(String salt) {
     final r = _r.fork('pot-$salt');
-    return r.weighted(kPotions, (p) => potionWeight(p.rarity));
+    return r.weighted(kPotions, (p) => potionWeight(p.rarity, run.act));
   }
 
-  /// Roughly a third of fights leave a draught behind; elites and bosses
-  /// always do. Returns null when the fight was not generous.
+  /// Whether this fight left a draught behind.
+  ///
+  /// Nothing is guaranteed any more. Elites and bosses used to drop one every
+  /// single time, which meant the belt was always full and the decision of
+  /// when to drink one never had any weight behind it.
   PotionDef? potionDrop(String kind) {
     final r = _r.fork('drop-${run.act}-${run.totalFloors}');
-    // Elites and bosses always leave one. Ascension 14 thins ordinary fights
-    // only — the guarantee is the floor the player can plan around.
-    if (kind == 'boss' || kind == 'elite') {
-      return _rollPotion('${run.act}-${run.totalFloors}');
-    }
-    final base = run.relics.contains('deep_satchel') ? 55 : 35;
+    final satchel = run.relics.contains('deep_satchel');
+    final base = switch (kind) {
+      'boss' => satchel ? 85 : 70,
+      'elite' => satchel ? 62 : 50,
+      _ => satchel ? 28 : 20,
+    };
     final chance = (base * asc.potionDropRate).round();
     if (r.nextInt(100) >= chance) return null;
     return _rollPotion('${run.act}-${run.totalFloors}');

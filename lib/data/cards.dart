@@ -31,10 +31,17 @@ List<CardDef> rewardPoolFor(String vesselId) => kAllCards
 final List<CardDef> kCursePool =
     kCurseCards.where((c) => c.rarity == Rarity.curse).toList();
 
+/// How often each tier is offered, by act.
+///
+/// The old curve handed out a rare in roughly one offer in seven from Act I
+/// onwards and a mythic could show up on the first floor, which flattened the
+/// whole reward arc — the best cards were simply available. Rares are now
+/// scarce early and become the reason to go deep, and mythics do not exist
+/// before Act II at all.
 int rarityWeight(Rarity r, int act) => switch (r) {
-      Rarity.common => 62,
-      Rarity.uncommon => 30 + act * 2,
-      Rarity.rare => 7 + act * 3,
-      Rarity.mythic => act >= 2 ? 3 : 1,
+      Rarity.common => switch (act) { 1 => 74, 2 => 64, _ => 56 },
+      Rarity.uncommon => switch (act) { 1 => 23, 2 => 29, _ => 32 },
+      Rarity.rare => switch (act) { 1 => 3, 2 => 7, _ => 11 },
+      Rarity.mythic => switch (act) { 1 => 0, 2 => 1, _ => 3 },
       _ => 0,
     };

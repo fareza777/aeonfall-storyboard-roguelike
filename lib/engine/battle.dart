@@ -228,6 +228,10 @@ class Battle {
 
       var maxHp = rng.range(d.hp, d.hpMax);
       maxHp = (maxHp * asc.foeHp).round();
+      // The same species met at the boss door is tougher than the one met on
+      // the entry layer. Without this an act is flat from end to end.
+      final depth = (run.floor / 13).clamp(0.0, 1.0);
+      maxHp = (maxHp * (1 + .24 * depth)).round();
       if (mods.contains('hollow')) maxHp = (maxHp * 1.35).round();
       if (mods.contains('waning')) maxHp = (maxHp * .75).round();
 

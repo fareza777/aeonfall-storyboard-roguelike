@@ -275,9 +275,15 @@ final Map<String, PotionDef> kPotionById = {for (final p in kPotions) p.id: p};
 
 PotionDef potionDef(String id) => kPotionById[id] ?? kPotions.first;
 
-/// Weighted draw — commons show up roughly three times as often as rares.
-int potionWeight(Rarity r) => switch (r) {
-      Rarity.common => 6,
-      Rarity.uncommon => 3,
-      _ => 1,
+/// Weighted draw, tightened by act.
+///
+/// A flat 6:3:1 meant roughly one draught in ten was a rare, from the first
+/// floor onwards, which made the strongest tier ordinary. Rares now cannot
+/// appear in Act I at all and stay uncommon after it, so finding The Last
+/// Stroke is an event rather than a Tuesday.
+int potionWeight(Rarity r, int act) => switch (r) {
+      Rarity.common => switch (act) { 1 => 12, 2 => 9, _ => 7 },
+      Rarity.uncommon => switch (act) { 1 => 3, 2 => 5, _ => 6 },
+      Rarity.rare => switch (act) { 1 => 0, 2 => 1, _ => 2 },
+      _ => 0,
     };

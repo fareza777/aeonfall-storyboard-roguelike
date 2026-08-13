@@ -31,7 +31,59 @@ class _ShopScreenState extends State<ShopScreen> {
   final Set<String> _potionsSold = {};
   final Set<String> _sold = {};
   bool _relicSold = false;
+  bool _forged = false;
   bool _removed = false;
+
+  /// Sharpening used to be offered free after every fight, which meant a deck
+  /// was fully upgraded by the middle of Act II and nothing you did about it
+  /// was a decision. It costs Aeon here, and the price climbs with the act.
+  int get _forgeCost => 95 + Game.i.run!.act * 45;
+
+  void _forge() {
+    final r = Game.i.run!;
+    if (r.gold < _forgeCost || _forged) return;
+    final ups = r.deck.where((c) => c.canUpgrade).toList()
+      ..sort((a, b) => a.def.name.compareTo(b.def.name));
+    if (ups.isEmpty) return;
+    Audio.i.sfx('draw', volume: .5);
+
+    CardInst? picked;
+    aeSheet(
+      context,
+      title: 'SHARPEN A FRAME',
+      subtitle: '◈ $_forgeCost · ${ups.length} can still be improved',
+      accent: Ae.volt,
+      heightFactor: .82,
+      builder: (sheetCtx) => GridView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 1 / 1.52,
+        ),
+        itemCount: ups.length,
+        itemBuilder: (_, i) => FrameCard(
+          card: ups[i],
+          width: 108,
+          onTap: () {
+            picked = ups[i];
+            Navigator.of(sheetCtx).pop();
+          },
+        ),
+      ),
+    ).then((_) {
+      final p = picked;
+      if (p == null || !mounted) return;
+      Audio.i.sfx('levelup');
+      setState(() {
+        r.gold -= _forgeCost;
+        p.upgraded = true;
+        _forged = true;
+      });
+      Game.i.saveRun();
+    });
+  }
 
   int get _removalCost {
     final r = Game.i.run!;
@@ -304,6 +356,20 @@ class _ShopScreenState extends State<ShopScreen> {
                             ),
                           ),
                           const SizedBox(height: 20),
+                          AeButton(
+                            label: _forged ? 'The whetstone is worn' : 'Sharpen a Frame',
+                            sub: _forged
+                                ? null
+                                : (r.deck.any((c) => c.canUpgrade)
+                                    ? '◈ $_forgeCost · upgrade one card you carry'
+                                    : 'Everything you carry is already sharp'),
+                            color: Ae.volt,
+                            enabled: !_forged &&
+                                r.gold >= _forgeCost &&
+                                r.deck.any((c) => c.canUpgrade),
+                            onTap: _forge,
+                          ),
+                          const SizedBox(height: 12),
                           AeButton(
                             label: _removed ? 'The brazier is cold' : 'Burn a Frame',
                             sub: _removed

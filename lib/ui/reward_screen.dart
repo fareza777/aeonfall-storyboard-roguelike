@@ -139,8 +139,6 @@ class _RewardScreenState extends State<RewardScreen> {
                               Text('CHOOSE A FRAME', style: Ae.label(14)),
                               const SizedBox(height: 10),
                               _cardOffer(),
-                              const SizedBox(height: 12),
-                              _forgeRow(),
                             ],
                             const SizedBox(height: 26),
                             AeButton(
@@ -268,73 +266,6 @@ class _RewardScreenState extends State<RewardScreen> {
         ]),
       ),
     );
-  }
-
-  /// The alternative to taking a new frame: sharpen one you already carry.
-  /// A thinner deck that hits harder is a real strategy and the game used to
-  /// only allow it at a Rest.
-  Widget _forgeRow() {
-    final can = Game.i.run!.deck.any((c) => c.canUpgrade);
-    return GestureDetector(
-      onTap: _cardTaken || !can ? null : _openForge,
-      child: AePanel(
-        border: _cardTaken || !can ? Ae.panelHi : Ae.volt,
-        child: Row(children: [
-          Text('⚒', style: TextStyle(fontSize: 26, color: _cardTaken ? Ae.dim : Ae.volt)),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('SHARPEN ONE INSTEAD',
-                  style: Ae.label(15, c: _cardTaken ? Ae.dim : Ae.bone)),
-              const SizedBox(height: 4),
-              Text(
-                  can
-                      ? 'Skip the new frame and upgrade one already in your deck.'
-                      : 'Every frame you carry is already sharpened.',
-                  style: Ae.body(15, c: Ae.dim)),
-            ]),
-          ),
-        ]),
-      ),
-    );
-  }
-
-  Future<void> _openForge() async {
-    final deck = Game.i.run!.deck.where((c) => c.canUpgrade).toList()
-      ..sort((a, b) => a.name.compareTo(b.name));
-    CardInst? picked;
-    await aeSheet(
-      context,
-      title: 'SHARPEN A FRAME',
-      subtitle: '${deck.length} can still be improved',
-      accent: Ae.volt,
-      builder: (sheetCtx) => GridView.builder(
-        padding: const EdgeInsets.only(top: 4),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          childAspectRatio: .63,
-          crossAxisSpacing: 8,
-          mainAxisSpacing: 8,
-        ),
-        itemCount: deck.length,
-        itemBuilder: (_, i) => FrameCard(
-          card: deck[i],
-          width: 110,
-          onTap: () {
-            picked = deck[i];
-            Navigator.of(sheetCtx).pop();
-          },
-        ),
-      ),
-    );
-    final p = picked;
-    if (p == null || !mounted) return;
-    Audio.i.sfx('levelup');
-    setState(() {
-      p.upgraded = true;
-      _cardTaken = true;
-    });
-    Game.i.saveRun();
   }
 
   Widget _cardOffer() => SizedBox(

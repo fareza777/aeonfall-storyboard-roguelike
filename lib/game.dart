@@ -44,6 +44,12 @@ class Game extends ChangeNotifier {
         run = null;
       }
     }
+    // A run loaded from storage with no health left is a corpse, not a save.
+    if (run != null && run!.hp <= 0) {
+      run = null;
+      director = null;
+      _prefs!.remove(_kRun);
+    }
     Audio.i.musicOn = meta.music;
     Audio.i.sfxOn = meta.sfx;
     await Audio.i.init();
@@ -51,7 +57,23 @@ class Game extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// A run you can actually go back to. A dead or finished run is not one, and
+  /// neither is a saved run whose HP reached zero outside a fight.
   bool get hasRun => run != null && run!.hp > 0 && run!.act <= 3;
+
+  /// Clears a run that is over but was never torn down — a crash or a kill
+  /// mid-defeat could leave a zero-HP run in storage, which then loaded on the
+  /// next launch and sat in the Sanctum offering to be continued.
+  void reapDeadRun() {
+    if (run != null && run!.hp <= 0) {
+      lastRun = run;
+      run = null;
+      director = null;
+      battle = null;
+      save();
+      notifyListeners();
+    }
+  }
 
   // ------------------------------------------------------------ saving
   void saveMeta() {

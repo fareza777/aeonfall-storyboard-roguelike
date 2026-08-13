@@ -94,10 +94,21 @@ void main() {
     expect(back.potions, ['secondwind', 'coldiron']);
   });
 
-  test('elites and bosses always leave one behind', () {
-    final run = Director.newRun(21, 'voltborn', MetaState());
-    final d = Director(run);
-    expect(d.potionDrop('elite'), isNotNull);
-    expect(d.potionDrop('boss'), isNotNull);
+  test('drops happen often enough to matter but are never guaranteed', () {
+    int got(String kind) {
+      var n = 0;
+      for (var seed = 1; seed <= 200; seed++) {
+        final run = Director.newRun(seed * 21, 'voltborn', MetaState())
+          ..totalFloors = seed;
+        if (Director(run).potionDrop(kind) != null) n++;
+      }
+      return n;
+    }
+
+    for (final kind in ['normal', 'elite', 'boss']) {
+      final n = got(kind);
+      expect(n, greaterThan(10), reason: '$kind fights never drop anything');
+      expect(n, lessThan(200), reason: '$kind fights always drop — no decision left');
+    }
   });
 }

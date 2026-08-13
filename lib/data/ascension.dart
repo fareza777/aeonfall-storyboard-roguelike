@@ -44,8 +44,7 @@ const kAscensions = <AscensionTier>[
   AscensionTier(13, 'Cold Open',
       'You draw four frames on the first turn of a fight instead of five.'),
   AscensionTier(14, 'Deeper Pockets Required',
-      'Ordinary fights leave a draught half as often. Elites and bosses '
-          'still always do.'),
+      'Every kind of fight leaves a draught half as often.'),
   AscensionTier(15, 'Sturdier Yet',
       'Foes carry a further 10% health.'),
   AscensionTier(16, 'No Warm-Up',
