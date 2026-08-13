@@ -184,6 +184,51 @@ void main() {
         reason: 'the act does not actually get harder');
   });
 
+  test('most of the path a player walks is a fight', () {
+    // Measured on the route actually taken, not the whole generated grid.
+    // The old mix gave 4.6 battles against 5.1 rests, shops and caches — 42%
+    // of a run was combat, so the deck being built barely got used.
+    for (final act in [1, 2, 3]) {
+      final tally = <NodeType, double>{};
+      const runs = 300;
+      for (var seed = 1; seed <= runs; seed++) {
+        final m = generateMap(Rng(seed * 7), act);
+        var id = m.available.first;
+        for (var l = 0; l < m.layers; l++) {
+          final n = m.byId(id);
+          tally[n.type] = (tally[n.type] ?? 0) + 1;
+          if (n.next.isEmpty) break;
+          id = n.next[seed % n.next.length];
+        }
+      }
+      final nodes = tally.values.fold(0.0, (a, b) => a + b) / runs;
+      final fights = ((tally[NodeType.battle] ?? 0) +
+              (tally[NodeType.elite] ?? 0) +
+              (tally[NodeType.boss] ?? 0)) /
+          runs;
+      final quiet = ((tally[NodeType.rest] ?? 0) +
+              (tally[NodeType.shop] ?? 0) +
+              (tally[NodeType.treasure] ?? 0)) /
+          runs;
+
+      // ignore: avoid_print
+      print('act $act  ${nodes.toStringAsFixed(1)} nodes'
+          '  fights ${fights.toStringAsFixed(1)}'
+          ' (${(fights / nodes * 100).round()}%)'
+          '  quiet ${quiet.toStringAsFixed(1)}'
+          '  battles ${((tally[NodeType.battle] ?? 0) / runs).toStringAsFixed(1)}');
+
+      expect(fights / nodes, greaterThan(.50),
+          reason: 'act $act is mostly not fighting');
+      expect(fights, greaterThan(7.0),
+          reason: 'act $act has too few fights to build a deck around');
+      expect(quiet, lessThan(4.5),
+          reason: 'act $act has too many rest/shop/cache stops');
+      // ...but it must not become nothing but combat either.
+      expect(fights / nodes, lessThan(.70), reason: 'act $act has no breathing room');
+    }
+  });
+
   test('each act is a real step up from the last', () {
     final a1 = weightAt(1, 13);
     final a2 = weightAt(2, 0);

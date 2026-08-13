@@ -62,12 +62,18 @@ class _RunHudState extends State<RunHud> {
                       child: Icon(Icons.arrow_back, color: Ae.goldSoft, size: 24),
                     ),
                   ),
-                HpBar(hp: r.hp, maxHp: r.maxHp, width: 128, height: 21),
-                const SizedBox(width: 14),
-                Text('◈ ${r.gold}', style: Ae.body(16, c: Ae.gold, w: 800)),
-                const Spacer(),
-                Text('ACT ${r.act}', style: Ae.label(14)),
+                // The bar takes whatever is left after the fixed readouts, so
+                // a longer Aeon count or a wider text setting can never push
+                // the row off the edge.
+                Expanded(
+                  child: HpBar(
+                      hp: r.hp, maxHp: r.maxHp, width: double.infinity, height: 21),
+                ),
                 const SizedBox(width: 10),
+                Text('◈ ${r.gold}', style: Ae.body(16, c: Ae.gold, w: 800)),
+                const SizedBox(width: 10),
+                Text('ACT ${r.act}', style: Ae.label(14)),
+                const SizedBox(width: 8),
                 GestureDetector(
                   onTap: () => showDeck(context, r),
                   child: Container(

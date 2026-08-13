@@ -70,7 +70,11 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
   }
 
   void _maybeIntro() {
-    final r = Game.i.run!;
+    // Fires from a post-frame callback and from didPopNext, either of which
+    // can land after the run has ended. A bare `run!` here threw straight out
+    // of a callback with nothing to catch it.
+    final r = Game.i.run;
+    if (r == null || !mounted) return;
     final key = 'intro_act${r.act}';
     if (r.flag(key)) return;
     r.setFlag(key);
@@ -136,7 +140,35 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
   Widget build(BuildContext context) {
     final g = Game.i;
     if (g.run == null) {
-      return const Scaffold(body: Center(child: Text('No run')));
+      // Reachable if a run ends while this screen is still on the stack. It
+      // used to render the words "No run" and nothing else — no button, no
+      // back — which is a dead end the player cannot leave.
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 34),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('THIS DRAFT IS OVER', style: Ae.display(22)),
+                const SizedBox(height: 10),
+                Text(
+                  'The page you were on is no longer being written.',
+                  textAlign: TextAlign.center,
+                  style: Ae.body(16, c: Ae.dim, h: 1.5),
+                ),
+                const SizedBox(height: 22),
+                AeButton(
+                  label: 'Return to the Sanctum',
+                  big: true,
+                  onTap: () =>
+                      Navigator.of(context).popUntil((route) => route.isFirst),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
     }
     final r = g.run!;
     final map = r.map!;

@@ -6,6 +6,7 @@ import '../data/relics.dart';
 import '../engine/core.dart';
 import '../game.dart';
 import '../theme.dart';
+import 'map_screen.dart';
 import 'result_screen.dart';
 import 'run_hud.dart';
 import 'widgets.dart';
@@ -76,7 +77,14 @@ class _RewardScreenState extends State<RewardScreen> {
       );
     } else {
       g.nextAct();
-      Navigator.of(context).pop();
+      // A new act means a new map. Popping back put the player on the *same*
+      // MapScreen instance whose map had just been swapped out underneath it,
+      // which is exactly the kind of stale state that leaves a blank screen.
+      // Give the new act a screen of its own and drop the old stack.
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const MapScreen()),
+        (r) => r.isFirst,
+      );
     }
   }
 
