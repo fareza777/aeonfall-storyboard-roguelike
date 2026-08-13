@@ -98,7 +98,9 @@ final kRelics = <RelicDef>[
       Rarity.uncommon, _pas, value: 8),
   _r('blood_vial', 'Blood Vial', 'Whenever you lose HP to your own frames, gain 4 Guard.',
       Rarity.uncommon, _pas, value: 4),
-  _r('silver_thread', 'Silver Thread', 'Companions never leave without saying goodbye. Events are kinder.',
+  // Was "Events are kinder", which meant nothing and did nothing. Now it says
+  // exactly what it does, and Director.applyOutcome does it.
+  _r('silver_thread', 'Silver Thread', 'Any HP an event would cost you is halved.',
       Rarity.uncommon, _pas),
   _r('keystone', 'Keystone', 'Elites drop an extra sigil.', Rarity.uncommon, _pas),
   _r('witness_stone', 'Witness Stone', 'Events reveal one hidden option.', Rarity.uncommon, _pas),

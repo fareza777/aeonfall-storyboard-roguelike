@@ -253,16 +253,27 @@ class Battle {
     _say('${vessel.title} enters the frame.');
 
     for (final id in run.relics) {
+      if (id == 'aeon_sigil') hero.maxHp = math.max(10, hero.maxHp - 6);
+    }
+
+    _beginTurn(first: true);
+
+    // Battle-start sigils fire *after* the first turn is set up, not before.
+    // `_beginTurn` clears Guard and assigns Aether outright, so anything
+    // granted ahead of it was wiped a microsecond later — which silently
+    // broke two of the six starting sigils, Frozen Tear and Conductor's Nail,
+    // along with every other sigil that opens a fight with Guard or Aether.
+    for (final id in run.relics) {
       final r = relicDef(id);
       if (r.trigger == RelicTrigger.onBattleStart) {
         _applyFxList(r.fx, null, source: r.name);
       }
-      if (id == 'aeon_sigil') hero.maxHp = math.max(10, hero.maxHp - 6);
       if (id == 'bell_fragment' && foes.isNotEmpty) {
         _damage(hero, foes.first, 12, isAttack: false);
       }
     }
-    _beginTurn(first: true);
+    _planIntents(); // conditions applied above can change what a foe will do
+    _checkEnd();
   }
 
   // ------------------------------------------------------- turn flow

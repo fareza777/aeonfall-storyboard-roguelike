@@ -53,6 +53,14 @@ class _RewardScreenState extends State<RewardScreen> {
   late final PotionDef? _potion = Game.i.director!
       .potionDrop(widget.isBoss ? 'boss' : (widget.relic ? 'elite' : 'normal'));
 
+  /// Keystone: "Elites drop an extra sigil." It never did — nothing in the
+  /// game read the relic. This is that second sigil.
+  bool _extraTaken = false;
+  late final RelicDef? _extraRelic =
+      widget.relic && !widget.isBoss && Game.i.run!.relics.contains('keystone')
+          ? Game.i.director!.relicReward()
+          : null;
+
   bool get _done =>
       _goldTaken && (!widget.relic || _relicTaken) && (!widget.cards || _cardTaken);
 
@@ -138,6 +146,10 @@ class _RewardScreenState extends State<RewardScreen> {
                               const SizedBox(height: 14),
                               _relicRow(),
                             ],
+                            if (_extraRelic != null) ...[
+                              const SizedBox(height: 14),
+                              _relicRow(_extraRelic, true),
+                            ],
                             if (_potion != null) ...[
                               const SizedBox(height: 14),
                               _potionRow(_potion),
@@ -192,33 +204,41 @@ class _RewardScreenState extends State<RewardScreen> {
         ),
       );
 
-  Widget _relicRow() => GestureDetector(
-        onTap: _relicTaken
+  Widget _relicRow([RelicDef? which, bool extra = false]) {
+    final rel = which ?? _relic;
+    final taken = extra ? _extraTaken : _relicTaken;
+    return GestureDetector(
+        onTap: taken
             ? null
             : () {
                 Audio.i.sfx('relic');
                 setState(() {
-                  Game.i.run!.addRelic(_relic.id);
-                  _relicTaken = true;
+                  Game.i.run!.addRelic(rel.id);
+                  if (extra) {
+                    _extraTaken = true;
+                  } else {
+                    _relicTaken = true;
+                  }
                 });
                 Game.i.saveRun();
               },
         child: AePanel(
-          border: _relicTaken ? Ae.panelHi : _relic.rarity.color,
+          border: taken ? Ae.panelHi : rel.rarity.color,
           child: Row(children: [
-            SizedBox(width: 52, height: 52, child: Art(_relic.artKey())),
+            SizedBox(width: 52, height: 52, child: Art(rel.artKey())),
             const SizedBox(width: 14),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(_relic.name.toUpperCase(),
-                    style: Ae.label(15, c: _relicTaken ? Ae.dim : Ae.bone)),
+                Text(extra ? '${rel.name.toUpperCase()}  ·  KEYSTONE' : rel.name.toUpperCase(),
+                    style: Ae.label(15, c: taken ? Ae.dim : Ae.bone)),
                 const SizedBox(height: 4),
-                Text(_relic.desc, style: Ae.body(15, c: Ae.dim)),
+                Text(rel.desc, style: Ae.body(15, c: Ae.dim)),
               ]),
             ),
           ]),
         ),
       );
+  }
 
   /// A draught drop. If the belt is full the row says so rather than
   /// silently swallowing the tap.

@@ -248,8 +248,12 @@ class Director {
         run.gold = math.max(0, run.gold - o.value);
         return '−${o.value} Aeon';
       case OutKind.hp:
-        run.damage(o.value);
-        return '−${o.value} HP';
+        // Silver Thread: the Sanctum's only sigil that softens the road.
+        final v = run.relics.contains('silver_thread')
+            ? math.max(1, (o.value / 2).round())
+            : o.value;
+        run.damage(v);
+        return '−$v HP';
       case OutKind.heal:
         run.heal(o.value);
         return '+${o.value} HP';

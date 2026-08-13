@@ -1269,11 +1269,11 @@ V2 = [
         'prompt': 'the Short Wick — an aged, worn arcane object, ornate arcane relic icon, single centered object, symmetrical, glowing runic accents, flat near-black background, crisp game inventory icon, dark fantasy storyboard illustration, painterly gouache and ink wash, dramatic chiaroscuro lighting, volumetric haze, cinematic film-still framing, deep indigo and ember-gold and bone-white palette, ornate arcane detail, AAA game concept art, highly detailed, masterpiece',
     },
     {
-        'key': 'relic/salt_pouch',
+        'key': 'relic/weeping_salt',
         'group': 'relic',
         'ar': '1:1',
         'model': 'flux-schnell',
-        'prompt': 'the Salt Pouch — an aged, worn arcane object, ornate arcane relic icon, single centered object, symmetrical, glowing runic accents, flat near-black background, crisp game inventory icon, dark fantasy storyboard illustration, painterly gouache and ink wash, dramatic chiaroscuro lighting, volumetric haze, cinematic film-still framing, deep indigo and ember-gold and bone-white palette, ornate arcane detail, AAA game concept art, highly detailed, masterpiece',
+        'prompt': 'the Weeping Salt — an aged, worn arcane object, ornate arcane relic icon, single centered object, symmetrical, glowing runic accents, flat near-black background, crisp game inventory icon, dark fantasy storyboard illustration, painterly gouache and ink wash, dramatic chiaroscuro lighting, volumetric haze, cinematic film-still framing, deep indigo and ember-gold and bone-white palette, ornate arcane detail, AAA game concept art, highly detailed, masterpiece',
     },
     {
         'key': 'relic/dry_kindling',
@@ -1290,11 +1290,11 @@ V2 = [
         'prompt': 'the Bone Needle — an aged, worn arcane object, ornate arcane relic icon, single centered object, symmetrical, glowing runic accents, flat near-black background, crisp game inventory icon, dark fantasy storyboard illustration, painterly gouache and ink wash, dramatic chiaroscuro lighting, volumetric haze, cinematic film-still framing, deep indigo and ember-gold and bone-white palette, ornate arcane detail, AAA game concept art, highly detailed, masterpiece',
     },
     {
-        'key': 'relic/cracked_lens',
+        'key': 'relic/scored_lens',
         'group': 'relic',
         'ar': '1:1',
         'model': 'flux-schnell',
-        'prompt': 'the Cracked Lens — an aged, worn arcane object, ornate arcane relic icon, single centered object, symmetrical, glowing runic accents, flat near-black background, crisp game inventory icon, dark fantasy storyboard illustration, painterly gouache and ink wash, dramatic chiaroscuro lighting, volumetric haze, cinematic film-still framing, deep indigo and ember-gold and bone-white palette, ornate arcane detail, AAA game concept art, highly detailed, masterpiece',
+        'prompt': 'the Scored Lens — an aged, worn arcane object, ornate arcane relic icon, single centered object, symmetrical, glowing runic accents, flat near-black background, crisp game inventory icon, dark fantasy storyboard illustration, painterly gouache and ink wash, dramatic chiaroscuro lighting, volumetric haze, cinematic film-still framing, deep indigo and ember-gold and bone-white palette, ornate arcane detail, AAA game concept art, highly detailed, masterpiece',
     },
     {
         'key': 'relic/wool_lining',

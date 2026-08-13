@@ -1,7 +1,7 @@
 name: aeonfall
 description: "AEONFALL - a fully illustrated storyboard roguelite."
 publish_to: 'none'
-version: 2.1.1+6
+version: 2.1.2+7
 
 environment:
   sdk: ^3.9.0
