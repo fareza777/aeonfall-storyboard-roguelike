@@ -14,7 +14,7 @@ class MonetizationService extends ChangeNotifier {
 
   static final MonetizationService i = MonetizationService._();
 
-  static const productId = 'aeonfall_remove_ads';
+  static const productId = 'remove_ads';
   static const privacyPolicyUrl =
       'https://fareza777.github.io/aeonfall-storyboard-roguelike/privacy-policy.html';
 
