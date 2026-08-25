@@ -23,9 +23,9 @@ class MonetizationService extends ChangeNotifier {
   static const _testBannerUnit = 'ca-app-pub-3940256099942544/6300978111';
   static const _testInterstitialUnit = 'ca-app-pub-3940256099942544/1033173712';
   static const productionBannerUnit =
-      'ca-app-pub-6279186647593327/REPLACE_BANNER';
+      'ca-app-pub-6279186647593327/7063520187';
   static const productionInterstitialUnit =
-      'ca-app-pub-6279186647593327/REPLACE_INTERSTITIAL';
+      'ca-app-pub-6279186647593327/5750438511';
 
   StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
   InterstitialAd? _interstitial;
