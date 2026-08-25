@@ -12,9 +12,9 @@ class RunState {
     required this.seed,
     required this.vesselId,
     required this.ascension,
-  })  : vessel = vesselById(vesselId),
-        hp = vesselById(vesselId).hp,
-        maxHp = vesselById(vesselId).hp {
+  }) : vessel = vesselById(vesselId),
+       hp = vesselById(vesselId).hp,
+       maxHp = vesselById(vesselId).hp {
     rng = Rng(seed);
     deck = [];
     for (final e in vessel.deck.entries) {
@@ -25,7 +25,8 @@ class RunState {
     relics = [vessel.relic];
   }
 
-  RunState._raw(this.seed, this.vesselId, this.ascension) : vessel = vesselById(vesselId);
+  RunState._raw(this.seed, this.vesselId, this.ascension)
+    : vessel = vesselById(vesselId);
 
   final int seed;
   final String vesselId;
@@ -89,18 +90,18 @@ class RunState {
   List<int> hpTrail = [];
 
   Map<String, dynamic> get record => {
-        'foes': foesFelled,
-        'elites': elitesFelled,
-        'bosses': bossesFelled,
-        'dealt': damageDealt,
-        'taken': damageTaken,
-        'cine': cinematics,
-        'react': reactions,
-        'draughts': draughtsDrunk,
-        'aids': aidsCalled,
-        'turns': turnsTaken,
-        'trail': hpTrail,
-      };
+    'foes': foesFelled,
+    'elites': elitesFelled,
+    'bosses': bossesFelled,
+    'dealt': damageDealt,
+    'taken': damageTaken,
+    'cine': cinematics,
+    'react': reactions,
+    'draughts': draughtsDrunk,
+    'aids': aidsCalled,
+    'turns': turnsTaken,
+    'trail': hpTrail,
+  };
 
   void loadRecord(Map<String, dynamic>? j) {
     if (j == null) return;
@@ -152,37 +153,41 @@ class RunState {
   }
 
   Map<String, dynamic> toJson() => {
-        'seed': seed,
-        'vessel': vesselId,
-        'asc': ascension,
-        'hp': hp,
-        'maxHp': maxHp,
-        'gold': gold,
-        'act': act,
-        'floor': floor,
-        'totalFloors': totalFloors,
-        'mirror': mirrorCoinUsed,
-        'deck': deck.map((c) => c.toJson()).toList(),
-        'relics': relics,
-        'potions': potions,
-        'map': map?.toJson(),
-        'chron': chronicleId,
-        'antag': antagonistId,
-        'betrayer': betrayerId,
-        'betrayed': betrayalActed,
-        'comps': companions,
-        'pages': pages,
-        'flags': flags.toList(),
-        'seen': seenEvents.toList(),
-        'journal': journal,
-        'mercy': mercy,
-        'cruelty': cruelty,
-        'twist': pendingTwist,
-        'record': record,
-      };
+    'seed': seed,
+    'vessel': vesselId,
+    'asc': ascension,
+    'hp': hp,
+    'maxHp': maxHp,
+    'gold': gold,
+    'act': act,
+    'floor': floor,
+    'totalFloors': totalFloors,
+    'mirror': mirrorCoinUsed,
+    'deck': deck.map((c) => c.toJson()).toList(),
+    'relics': relics,
+    'potions': potions,
+    'map': map?.toJson(),
+    'chron': chronicleId,
+    'antag': antagonistId,
+    'betrayer': betrayerId,
+    'betrayed': betrayalActed,
+    'comps': companions,
+    'pages': pages,
+    'flags': flags.toList(),
+    'seen': seenEvents.toList(),
+    'journal': journal,
+    'mercy': mercy,
+    'cruelty': cruelty,
+    'twist': pendingTwist,
+    'record': record,
+  };
 
   static RunState fromJson(Map<String, dynamic> j) {
-    final r = RunState._raw(j['seed'] as int, j['vessel'] as String, j['asc'] as int? ?? 0);
+    final r = RunState._raw(
+      j['seed'] as int,
+      j['vessel'] as String,
+      j['asc'] as int? ?? 0,
+    );
     r.rng = Rng(r.seed);
     r.hp = j['hp'];
     r.maxHp = j['maxHp'];
@@ -230,6 +235,7 @@ class MetaState {
   bool tutorialDone = false;
   bool music = true;
   bool sfx = true;
+  bool adsRemoved = false;
 
   // ------------------------------------------------------- preferences
   /// Multiplies every text size in the game. Some people need bigger type and
@@ -250,7 +256,12 @@ class MetaState {
   /// record to look back on, not an analytics warehouse.
   List<Map<String, dynamic>> history = [];
 
-  void recordRun(RunState r, {required bool won, String? ending, int? finishedAt}) {
+  void recordRun(
+    RunState r, {
+    required bool won,
+    String? ending,
+    int? finishedAt,
+  }) {
     history.insert(0, {
       'vessel': r.vesselId,
       'asc': r.ascension,
@@ -280,26 +291,27 @@ class MetaState {
   bool get extraCardChoice => upgrades.contains('archive');
 
   Map<String, dynamic> toJson() => {
-        'shards': shards,
-        'runs': runs,
-        'wins': wins,
-        'deepest': deepestAct,
-        'asc': ascension,
-        'vessels': vessels.toList(),
-        'endings': endings.toList(),
-        'lore': lore.toList(),
-        'codex': codexEnemies.toList(),
-        'upgrades': upgrades.toList(),
-        'onboarded': onboarded,
-        'tutorial': tutorialDone,
-        'music': music,
-        'sfx': sfx,
-        'textScale': textScale,
-        'colourblind': colourblind,
-        'reducedMotion': reducedMotion,
-        'haptics': haptics,
-        'history': history,
-      };
+    'shards': shards,
+    'runs': runs,
+    'wins': wins,
+    'deepest': deepestAct,
+    'asc': ascension,
+    'vessels': vessels.toList(),
+    'endings': endings.toList(),
+    'lore': lore.toList(),
+    'codex': codexEnemies.toList(),
+    'upgrades': upgrades.toList(),
+    'onboarded': onboarded,
+    'tutorial': tutorialDone,
+    'music': music,
+    'sfx': sfx,
+    'adsRemoved': adsRemoved,
+    'textScale': textScale,
+    'colourblind': colourblind,
+    'reducedMotion': reducedMotion,
+    'haptics': haptics,
+    'history': history,
+  };
 
   static MetaState fromJson(Map<String, dynamic> j) {
     final m = MetaState();
@@ -308,7 +320,9 @@ class MetaState {
     m.wins = j['wins'] ?? 0;
     m.deepestAct = j['deepest'] ?? 1;
     m.ascension = j['asc'] ?? 0;
-    m.vessels = Set<String>.from(j['vessels'] ?? ['ashcaller', 'saintcoralis', 'voltborn']);
+    m.vessels = Set<String>.from(
+      j['vessels'] ?? ['ashcaller', 'saintcoralis', 'voltborn'],
+    );
     m.endings = Set<String>.from(j['endings'] ?? []);
     m.lore = Set<String>.from(j['lore'] ?? []);
     m.codexEnemies = Set<String>.from(j['codex'] ?? []);
@@ -317,6 +331,7 @@ class MetaState {
     m.tutorialDone = j['tutorial'] ?? false;
     m.music = j['music'] ?? true;
     m.sfx = j['sfx'] ?? true;
+    m.adsRemoved = j['adsRemoved'] ?? false;
     m.textScale = (j['textScale'] as num?)?.toDouble() ?? 1.0;
     m.colourblind = j['colourblind'] ?? false;
     m.reducedMotion = j['reducedMotion'] ?? false;
@@ -328,5 +343,6 @@ class MetaState {
   }
 
   String encode() => jsonEncode(toJson());
-  static MetaState decode(String s) => fromJson(jsonDecode(s) as Map<String, dynamic>);
+  static MetaState decode(String s) =>
+      fromJson(jsonDecode(s) as Map<String, dynamic>);
 }

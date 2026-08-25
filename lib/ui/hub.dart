@@ -4,6 +4,8 @@ import '../audio.dart';
 import '../data/ascension.dart';
 import '../data/vessels.dart';
 import '../game.dart';
+import '../monetization/ad_widgets.dart';
+import '../monetization/purchase_panel.dart';
 import '../theme.dart';
 import 'codex.dart';
 import 'how_to_play.dart';
@@ -56,7 +58,10 @@ class _HubScreenState extends State<HubScreen> {
               const SizedBox(height: 18),
               Text('AEONFALL', style: Ae.display(38)),
               const SizedBox(height: 6),
-              Text('THE SANCTUM BETWEEN FALLS', style: Ae.label(13, c: Ae.goldSoft)),
+              Text(
+                'THE SANCTUM BETWEEN FALLS',
+                style: Ae.label(13, c: Ae.goldSoft),
+              ),
               const SizedBox(height: 16),
               _stats(m),
               // Bottom-aligned where it belongs — the buttons sit under the
@@ -82,7 +87,9 @@ class _HubScreenState extends State<HubScreen> {
                                 onTap: () {
                                   Audio.i.sfx('confirm');
                                   Navigator.of(context).push(
-                                    MaterialPageRoute(builder: (_) => const MapScreen()),
+                                    MaterialPageRoute(
+                                      builder: (_) => const MapScreen(),
+                                    ),
                                   );
                                 },
                               ),
@@ -101,7 +108,8 @@ class _HubScreenState extends State<HubScreen> {
                                   Audio.i.sfx('confirm');
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
-                                      builder: (_) => const VesselSelectScreen(),
+                                      builder: (_) =>
+                                          const VesselSelectScreen(),
                                     ),
                                   );
                                 },
@@ -143,7 +151,8 @@ class _HubScreenState extends State<HubScreen> {
                             const SizedBox(height: 12),
                             AeButton(
                               label: 'How to Play',
-                              sub: 'Rules, elements and the story in plain language',
+                              sub:
+                                  'Rules, elements and the story in plain language',
                               color: Ae.good,
                               onTap: () {
                                 Audio.i.sfx('tap');
@@ -160,6 +169,8 @@ class _HubScreenState extends State<HubScreen> {
                               color: Ae.lumen,
                               onTap: () => _openSanctum(context),
                             ),
+                            const SizedBox(height: 14),
+                            const RemoveAdsPanel(),
                           ],
                         ),
                       ),
@@ -170,6 +181,7 @@ class _HubScreenState extends State<HubScreen> {
               const SizedBox(height: 12),
               _settings(m),
               const SizedBox(height: 10),
+              const SanctumBanner(),
             ],
           ),
         ),
@@ -233,14 +245,20 @@ class _HubScreenState extends State<HubScreen> {
                         style: Ae.label(13.5, c: on ? Ae.bone : Ae.dim),
                       ),
                       const SizedBox(height: 4),
-                      Text(t.desc, style: Ae.body(15, c: on ? Ae.bone : Ae.dim, h: 1.45)),
+                      Text(
+                        t.desc,
+                        style: Ae.body(15, c: on ? Ae.bone : Ae.dim, h: 1.45),
+                      ),
                     ],
                   ),
                 ),
                 if (on)
                   const Padding(
                     padding: EdgeInsets.only(left: 8, top: 2),
-                    child: Text('●', style: TextStyle(color: Ae.gold, fontSize: 12)),
+                    child: Text(
+                      '●',
+                      style: TextStyle(color: Ae.gold, fontSize: 12),
+                    ),
                   ),
               ],
             ),
@@ -361,7 +379,10 @@ class _HubScreenState extends State<HubScreen> {
                                 1.15 => 'LARGE',
                                 _ => 'LARGEST',
                               },
-                              style: Ae.label(11.5, c: m.textScale == s ? Ae.bone : Ae.dim),
+                              style: Ae.label(
+                                11.5,
+                                c: m.textScale == s ? Ae.bone : Ae.dim,
+                              ),
                             ),
                           ),
                         ),
@@ -402,32 +423,39 @@ class _HubScreenState extends State<HubScreen> {
     );
   }
 
-  Widget _accessRow(String title, String desc, bool on, VoidCallback tap) => Padding(
-    padding: const EdgeInsets.only(bottom: 10),
-    child: GestureDetector(
-      onTap: tap,
-      child: AePanel(
-        border: on ? Ae.gold : Ae.panelHi,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: Ae.label(13, c: on ? Ae.bone : Ae.dim)),
-                  const SizedBox(height: 3),
-                  Text(desc, style: Ae.body(14, c: Ae.dim, h: 1.35)),
-                ],
-              ),
+  Widget _accessRow(String title, String desc, bool on, VoidCallback tap) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: GestureDetector(
+          onTap: tap,
+          child: AePanel(
+            border: on ? Ae.gold : Ae.panelHi,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: Ae.label(13, c: on ? Ae.bone : Ae.dim),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(desc, style: Ae.body(14, c: Ae.dim, h: 1.35)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  on ? 'ON' : 'OFF',
+                  style: Ae.label(13, c: on ? Ae.gold : Ae.dim),
+                ),
+              ],
             ),
-            const SizedBox(width: 10),
-            Text(on ? 'ON' : 'OFF', style: Ae.label(13, c: on ? Ae.gold : Ae.dim)),
-          ],
+          ),
         ),
-      ),
-    ),
-  );
+      );
 
   Widget _toggle(String label, bool on, VoidCallback tap) => GestureDetector(
     onTap: tap,
@@ -494,10 +522,25 @@ class _Upgrade {
 }
 
 const _upgrades = <_Upgrade>[
-  _Upgrade('vigor', 'Vigour of the Reused', 'Begin every run with +10 max HP.', 220),
+  _Upgrade(
+    'vigor',
+    'Vigour of the Reused',
+    'Begin every run with +10 max HP.',
+    220,
+  ),
   _Upgrade('purse', 'Deeper Purse', 'Begin every run with +60 Aeon.', 180),
-  _Upgrade('sigil', 'Inherited Sigil', 'Begin every run with an extra sigil.', 320),
-  _Upgrade('archive', 'The Archive', 'Frame rewards always offer one extra choice.', 280),
+  _Upgrade(
+    'sigil',
+    'Inherited Sigil',
+    'Begin every run with an extra sigil.',
+    320,
+  ),
+  _Upgrade(
+    'archive',
+    'The Archive',
+    'Frame rewards always offer one extra choice.',
+    280,
+  ),
 ];
 
 const _vesselUnlocks = <String, int>{'umbralnyx': 400, 'lumenherald': 480};
@@ -529,7 +572,11 @@ class _SanctumSheetState extends State<_SanctumSheet> {
             child: Row(
               children: [
                 Expanded(
-                  child: Heading('THE SANCTUM', sub: 'What survives the Fall', size: 24),
+                  child: Heading(
+                    'THE SANCTUM',
+                    sub: 'What survives the Fall',
+                    size: 24,
+                  ),
                 ),
                 Text('${m.shards}', style: Ae.display(26, c: Ae.gold)),
                 Text('  SHARDS', style: Ae.label(12)),
@@ -628,11 +675,17 @@ class _SanctumSheetState extends State<_SanctumSheet> {
                       }
                     : null,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: afford ? Ae.gold.withValues(alpha: .18) : Ae.panel,
                     borderRadius: BorderRadius.circular(9),
-                    border: Border.all(color: afford ? Ae.gold : Ae.panelHi, width: 1.4),
+                    border: Border.all(
+                      color: afford ? Ae.gold : Ae.panelHi,
+                      width: 1.4,
+                    ),
                   ),
                   child: Text(
                     '$cost',

@@ -1,7 +1,7 @@
 name: aeonfall
 description: "AEONFALL - a fully illustrated storyboard roguelite."
 publish_to: 'none'
-version: 2.1.5+10
+version: 2.2.0+11
 
 environment:
   sdk: ^3.9.0
@@ -10,7 +10,10 @@ dependencies:
   flutter:
     sdk: flutter
   audioplayers: ^6.1.0
+  google_mobile_ads: ^9.1.0
+  in_app_purchase: ^3.2.3
   shared_preferences: ^2.3.3
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

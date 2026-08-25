@@ -6,6 +6,7 @@ import '../data/endings.dart';
 import '../data/narrative_model.dart';
 import '../engine/rng.dart';
 import '../game.dart';
+import '../monetization/monetization_service.dart';
 import '../theme.dart';
 import 'run_summary.dart';
 import 'widgets.dart';
@@ -72,16 +73,18 @@ class _FinaleScreenState extends State<FinaleScreen> {
                   ),
                   const SizedBox(height: 22),
                   AePanel(
-                    child: Row(children: [
-                      Expanded(
-                        child: Text(
-                          'Torn Pages ${r.pages.length}/9 · Mercy ${r.mercy} · '
-                          'Cruelty ${r.cruelty} · '
-                          '${r.companions.isEmpty ? "alone" : "${r.companions.length} beside you"}',
-                          style: Ae.body(15, c: Ae.goldSoft),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Torn Pages ${r.pages.length}/9 · Mercy ${r.mercy} · '
+                            'Cruelty ${r.cruelty} · '
+                            '${r.companions.isEmpty ? "alone" : "${r.companions.length} beside you"}',
+                            style: Ae.body(15, c: Ae.goldSoft),
+                          ),
                         ),
-                      ),
-                    ]),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 20),
                   for (var i = 0; i < choices.length; i++) ...[
@@ -119,7 +122,6 @@ class ResultScreen extends StatefulWidget {
 }
 
 class _ResultScreenState extends State<ResultScreen> {
-
   @override
   void initState() {
     super.initState();
@@ -134,9 +136,11 @@ class _ResultScreenState extends State<ResultScreen> {
     super.dispose();
   }
 
-  void _leave() {
+  Future<void> _leave() async {
     Audio.i.sfx('confirm');
     Audio.i.stopVoice();
+    await MonetizationService.i.showInterstitialIfDue();
+    if (!mounted) return;
     Navigator.of(context).popUntil((r) => r.isFirst);
   }
 
@@ -185,12 +189,17 @@ class _ResultScreenState extends State<ResultScreen> {
                         size: 17,
                       ),
                     ] else ...[
-                      Text('ENDING · ${m.endings.length} OF 12 FOUND',
-                          style: Ae.label(13)),
+                      Text(
+                        'ENDING · ${m.endings.length} OF 12 FOUND',
+                        style: Ae.label(13),
+                      ),
                       const SizedBox(height: 10),
                       Text(e.title, style: Ae.display(32)),
                       const SizedBox(height: 6),
-                      Text(e.epitaph, style: Ae.body(16, c: Ae.goldSoft, w: 600)),
+                      Text(
+                        e.epitaph,
+                        style: Ae.body(16, c: Ae.goldSoft, w: 600),
+                      ),
                       const SizedBox(height: 20),
                       Prose(e.body, size: 17),
                     ],
@@ -214,13 +223,21 @@ class _ResultScreenState extends State<ResultScreen> {
                             style: Ae.body(16, c: Ae.bone),
                           ),
                           const SizedBox(height: 8),
-                          Text('Ascension ${m.ascension} — every foe is a little harder now.',
-                              style: Ae.body(14, c: Ae.dim)),
+                          Text(
+                            'Ascension ${m.ascension} — every foe is a little harder now.',
+                            style: Ae.body(14, c: Ae.dim),
+                          ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 26),
-                    AeButton(label: 'Return to the Sanctum', big: true, onTap: _leave),
+                    AeButton(
+                      label: 'Return to the Sanctum',
+                      big: true,
+                      onTap: () {
+                        _leave();
+                      },
+                    ),
                     const SizedBox(height: 14),
                     Center(
                       child: Text(

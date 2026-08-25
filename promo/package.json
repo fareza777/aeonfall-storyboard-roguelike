@@ -1,0 +1,22 @@
+{
+  "name": "aeonfall-promo",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "remotion studio src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "render": "remotion render src/index.ts AeonfallPromo out/aeonfall-storyboard-rpg-trailer.mp4 --codec=h264 --image-format=jpeg"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.516",
+    "@remotion/media": "^4.0.516",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "remotion": "^4.0.516"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^5.9.3"
+  }
+}
