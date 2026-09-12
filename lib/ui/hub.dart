@@ -5,6 +5,7 @@ import '../data/ascension.dart';
 import '../data/vessels.dart';
 import '../game.dart';
 import '../monetization/ad_widgets.dart';
+import '../monetization/monetization_service.dart';
 import '../monetization/purchase_panel.dart';
 import '../theme.dart';
 import 'codex.dart';
@@ -53,135 +54,148 @@ class _HubScreenState extends State<HubScreen> {
         image: 'brand_hub_bg',
         dark: .60,
         child: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              const SizedBox(height: 18),
-              Text('AEONFALL', style: Ae.display(38)),
-              const SizedBox(height: 6),
-              Text(
-                'THE SANCTUM BETWEEN FALLS',
-                style: Ae.label(13, c: Ae.goldSoft),
-              ),
-              const SizedBox(height: 16),
-              _stats(m),
-              // Bottom-aligned where it belongs — the buttons sit under the
-              // thumb — but the column is given at least the viewport's height
-              // so it can scroll instead of overflowing on a short screen.
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (_, box) => SingleChildScrollView(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(minHeight: box.maxHeight),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(26, 12, 26, 4),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            if (g.hasRun) ...[
-                              AeButton(
-                                label: 'Continue Run',
-                                big: true,
-                                sub:
-                                    '${g.run!.vessel.title} · Act ${g.run!.act} · '
-                                    '${g.run!.hp}/${g.run!.maxHp} HP',
-                                onTap: () {
-                                  Audio.i.sfx('confirm');
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => const MapScreen(),
-                                    ),
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 12),
-                              AeButton(
-                                label: 'Abandon Run',
-                                color: Ae.blood,
-                                onTap: () => _confirmAbandon(context),
-                              ),
-                            ] else
-                              AeButton(
-                                label: 'Begin a New Run',
-                                big: true,
-                                sub: 'Choose a Vessel and fall again',
-                                onTap: () {
-                                  Audio.i.sfx('confirm');
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          const VesselSelectScreen(),
-                                    ),
-                                  );
-                                },
-                              ),
-                            const SizedBox(height: 12),
-                            Row(
+              Column(
+                children: [
+                  const SizedBox(height: 18),
+                  Text('AEONFALL', style: Ae.display(38)),
+                  const SizedBox(height: 6),
+                  Text(
+                    'THE SANCTUM BETWEEN FALLS',
+                    style: Ae.label(13, c: Ae.goldSoft),
+                  ),
+                  const SizedBox(height: 16),
+                  _stats(m),
+                  // Bottom-aligned where it belongs — the buttons sit under the
+                  // thumb — but the column is given at least the viewport's height
+                  // so it can scroll instead of overflowing on a short screen.
+                  Expanded(
+                    child: CustomScrollView(
+                      slivers: [
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(26, 12, 26, 18),
+                          sliver: SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.end,
                               children: [
-                                Expanded(
-                                  child: AeButton(
-                                    label: 'Trailer',
-                                    color: Ae.volt,
+                                if (g.hasRun) ...[
+                                  AeButton(
+                                    label: 'Continue Run',
+                                    big: true,
+                                    sub:
+                                        '${g.run!.vessel.title} · Act ${g.run!.act} · '
+                                        '${g.run!.hp}/${g.run!.maxHp} HP',
                                     onTap: () {
-                                      Audio.i.sfx('tap');
+                                      Audio.i.sfx('confirm');
                                       Navigator.of(context).push(
                                         MaterialPageRoute(
-                                          builder: (_) => const TrailerScreen(),
+                                          builder: (_) => const MapScreen(),
                                         ),
                                       );
                                     },
                                   ),
+                                  const SizedBox(height: 12),
+                                  AeButton(
+                                    label: 'Abandon Run',
+                                    color: Ae.blood,
+                                    onTap: () => _confirmAbandon(context),
+                                  ),
+                                ] else
+                                  AeButton(
+                                    label: 'Begin a New Run',
+                                    big: true,
+                                    sub: 'Choose a Vessel and fall again',
+                                    onTap: () {
+                                      Audio.i.sfx('confirm');
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              const VesselSelectScreen(),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: AeButton(
+                                        label: 'Trailer',
+                                        color: Ae.volt,
+                                        onTap: () {
+                                          Audio.i.sfx('tap');
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  const TrailerScreen(),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: AeButton(
+                                        label: 'Codex',
+                                        color: Ae.frost,
+                                        onTap: () {
+                                          Audio.i.sfx('tap');
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  const CodexScreen(),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: AeButton(
-                                    label: 'Codex',
-                                    color: Ae.frost,
-                                    onTap: () {
-                                      Audio.i.sfx('tap');
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (_) => const CodexScreen(),
-                                        ),
-                                      );
-                                    },
-                                  ),
+                                const SizedBox(height: 12),
+                                AeButton(
+                                  label: 'How to Play',
+                                  sub:
+                                      'Rules, elements and the story in plain language',
+                                  color: Ae.good,
+                                  onTap: () {
+                                    Audio.i.sfx('tap');
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => const HowToPlayScreen(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+                                AeButton(
+                                  label: 'The Sanctum  ·  ${m.shards} Shards',
+                                  color: Ae.lumen,
+                                  onTap: () => _openSanctum(context),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 12),
-                            AeButton(
-                              label: 'How to Play',
-                              sub:
-                                  'Rules, elements and the story in plain language',
-                              color: Ae.good,
-                              onTap: () {
-                                Audio.i.sfx('tap');
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => const HowToPlayScreen(),
-                                  ),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 12),
-                            AeButton(
-                              label: 'The Sanctum  ·  ${m.shards} Shards',
-                              color: Ae.lumen,
-                              onTap: () => _openSanctum(context),
-                            ),
-                            const SizedBox(height: 14),
-                            const RemoveAdsPanel(),
-                          ],
+                          ),
                         ),
-                      ),
+                      ],
                     ),
+                  ),
+                ],
+              ),
+              Positioned(
+                top: 2,
+                right: 6,
+                child: IconButton(
+                  tooltip: 'Settings',
+                  onPressed: _openSettings,
+                  icon: const Icon(
+                    Icons.settings_outlined,
+                    color: Ae.goldSoft,
+                    size: 26,
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
-              _settings(m),
-              const SizedBox(height: 10),
-              const SanctumBanner(),
             ],
           ),
         ),
@@ -284,48 +298,93 @@ class _HubScreenState extends State<HubScreen> {
     ),
   );
 
-  Widget _settings(m) => Wrap(
-    alignment: WrapAlignment.center,
-    spacing: 12,
-    runSpacing: 10,
-    children: [
-      _toggle('MUSIC', m.music, () {
-        setState(() => m.music = !m.music);
-        Audio.i.setMusic(m.music);
-        if (m.music) Audio.i.music('hub');
-        Game.i.saveMeta();
-      }),
-      _toggle('SOUND', m.sfx, () {
-        setState(() => m.sfx = !m.sfx);
-        Audio.i.sfxOn = m.sfx;
-        Audio.i.sfx('tap');
-        Game.i.saveMeta();
-      }),
-      GestureDetector(
-        onTap: () => showRunHistory(context),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-          decoration: BoxDecoration(
-            color: Ae.ink2,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Ae.panelHi, width: 1.4),
-          ),
-          child: Text('THE DRAFTS', style: Ae.label(13, c: Ae.bone)),
+  void _openSettings() {
+    Audio.i.sfx('tap');
+    final m = Game.i.meta;
+    aeSheet(
+      context,
+      title: 'SETTINGS',
+      subtitle: 'Stays on this device',
+      heightFactor: .86,
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (_, setSheet) {
+          void refresh(VoidCallback f) {
+            setSheet(f);
+            setState(() {});
+            Game.i.saveMeta();
+          }
+
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(20, 6, 20, 28),
+            children: [
+              Wrap(
+                spacing: 12,
+                runSpacing: 10,
+                children: [
+                  _toggle('MUSIC', m.music, () {
+                    refresh(() => m.music = !m.music);
+                    Audio.i.setMusic(m.music);
+                    if (m.music) Audio.i.music('hub');
+                  }),
+                  _toggle('SOUND', m.sfx, () {
+                    refresh(() => m.sfx = !m.sfx);
+                    Audio.i.sfxOn = m.sfx;
+                    Audio.i.sfx('tap');
+                  }),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _settingsNav(
+                'READABILITY',
+                'Text size, motion, haptics and colour names',
+                _openAccess,
+              ),
+              _settingsNav(
+                'THE DRAFTS',
+                'Past runs, kept as a record',
+                () => showRunHistory(context),
+              ),
+              const SizedBox(height: 8),
+              _settingsNav(
+                'PRIVACY OPTIONS',
+                'Ad choices and consent on this device',
+                () => MonetizationService.i.showPrivacyOptions(),
+              ),
+              const SizedBox(height: 22),
+              Text('THE QUIET PAGE', style: Ae.label(12, c: Ae.dim)),
+              const SizedBox(height: 10),
+              const RemoveAdsPanel(),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _settingsNav(String title, String desc, VoidCallback tap) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: GestureDetector(
+      onTap: tap,
+      child: AePanel(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: Ae.label(13, c: Ae.bone)),
+                  const SizedBox(height: 3),
+                  Text(desc, style: Ae.body(14, c: Ae.dim, h: 1.35)),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Icon(Icons.chevron_right, color: Ae.goldSoft, size: 22),
+          ],
         ),
       ),
-      GestureDetector(
-        onTap: _openAccess,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-          decoration: BoxDecoration(
-            color: Ae.ink2,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Ae.panelHi, width: 1.4),
-          ),
-          child: Text('READABILITY', style: Ae.label(13, c: Ae.bone)),
-        ),
-      ),
-    ],
+    ),
   );
 
   /// Text size, colour-blind element shapes, motion and haptics. Every one of
@@ -342,7 +401,7 @@ class _HubScreenState extends State<HubScreen> {
         builder: (_, setSheet) {
           void save(VoidCallback f) {
             setSheet(f);
-            setState(f);
+            setState(() {});
             Game.i.saveMeta();
           }
 
@@ -587,6 +646,7 @@ class _SanctumSheetState extends State<_SanctumSheet> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 30),
               children: [
+                WatchShardsPanel(onGranted: () => setState(() {})),
                 Text('PERMANENT BOONS', style: Ae.label(14)),
                 const SizedBox(height: 10),
                 for (final u in _upgrades)

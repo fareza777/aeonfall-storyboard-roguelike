@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -23,6 +24,7 @@ class Game extends ChangeNotifier {
 
   SharedPreferences? _prefs;
   bool ready = false;
+  final _storageReady = Completer<void>();
 
   static const _kMeta = 'aeonfall_meta_v1';
   static const _kRun = 'aeonfall_run_v1';
@@ -50,6 +52,7 @@ class Game extends ChangeNotifier {
       director = null;
       _prefs!.remove(_kRun);
     }
+    if (!_storageReady.isCompleted) _storageReady.complete();
     Audio.i.musicOn = meta.music;
     Audio.i.sfxOn = meta.sfx;
     await Audio.i.init();
@@ -78,6 +81,21 @@ class Game extends ChangeNotifier {
   // ------------------------------------------------------------ saving
   void saveMeta() {
     _prefs?.setString(_kMeta, meta.encode());
+  }
+
+  /// Purchase delivery can arrive before boot has loaded the saved metadata.
+  Future<void> persistRemoveAds() async {
+    await _storageReady.future;
+    final previous = meta.adsRemoved;
+    meta.adsRemoved = true;
+    try {
+      if (!await _prefs!.setString(_kMeta, meta.encode())) {
+        throw StateError('Could not save purchase');
+      }
+    } catch (_) {
+      meta.adsRemoved = previous;
+      rethrow;
+    }
   }
 
   /// Persists the run *and* tells listening widgets to refresh. Every screen
@@ -150,7 +168,9 @@ class Game extends ChangeNotifier {
     for (final f in foes) {
       meta.codexEnemies.add(f.id);
     }
-    Audio.i.music(kind == 'boss' ? 'boss' : (kind == 'elite' ? 'elite' : 'battle'));
+    Audio.i.music(
+      kind == 'boss' ? 'boss' : (kind == 'elite' ? 'elite' : 'battle'),
+    );
     notifyListeners();
   }
 
@@ -199,10 +219,12 @@ class Game extends ChangeNotifier {
 
   void finishRun(String endingId, {required bool won}) {
     meta.endings.add(endingId);
-    meta.recordRun(run!,
-        won: won,
-        ending: endingId,
-        finishedAt: DateTime.now().millisecondsSinceEpoch);
+    meta.recordRun(
+      run!,
+      won: won,
+      ending: endingId,
+      finishedAt: DateTime.now().millisecondsSinceEpoch,
+    );
     if (won) meta.wins++;
     meta.shards += 40 + run!.totalFloors * 3 + (won ? 120 : 0);
     if (won && meta.ascension < 20) meta.ascension++;
@@ -215,8 +237,11 @@ class Game extends ChangeNotifier {
   }
 
   void die() {
-    meta.recordRun(run!,
-        won: false, finishedAt: DateTime.now().millisecondsSinceEpoch);
+    meta.recordRun(
+      run!,
+      won: false,
+      finishedAt: DateTime.now().millisecondsSinceEpoch,
+    );
     meta.shards += 20 + run!.totalFloors * 2;
     lastRun = run;
     run = null;

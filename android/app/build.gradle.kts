@@ -7,12 +7,25 @@ plugins {
 }
 
 // Release signing details live in android/key.properties, which is kept out of
-// version control. Falls back to debug signing when it is absent.
+// version control. Release tasks must never fall back to debug signing.
 val keystoreProperties = Properties().apply {
     val f = rootProject.file("key.properties")
     if (f.exists()) f.inputStream().use { load(it) }
 }
-val hasReleaseKey = keystoreProperties.getProperty("storeFile") != null
+val hasReleaseKey = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+    .all { !keystoreProperties.getProperty(it).isNullOrBlank() }
+
+val validateReleaseSigning = tasks.register("validateReleaseSigning") {
+    doLast {
+        check(hasReleaseKey) { "Release signing configuration is missing or incomplete." }
+        check(file(keystoreProperties.getProperty("storeFile")).isFile) {
+            "Release signing keystore is missing."
+        }
+    }
+}
+tasks.configureEach {
+    if (name == "preReleaseBuild") dependsOn(validateReleaseSigning)
+}
 
 android {
     // Namespace must match the MainActivity package; applicationId is the
@@ -50,7 +63,7 @@ android {
             signingConfig = if (hasReleaseKey) {
                 signingConfigs.getByName("release")
             } else {
-                signingConfigs.getByName("debug")
+                null
             }
             isMinifyEnabled = true
             isShrinkResources = true

@@ -127,13 +127,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               );
             },
           ),
-          Positioned(
-            left: 24,
-            right: 24,
-            bottom: 34,
+          Align(
+            alignment: Alignment.bottomCenter,
             child: SafeArea(
               top: false,
+              minimum: const EdgeInsets.fromLTRB(24, 0, 24, 16),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -169,6 +169,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   if (!last)
                     TextButton(
                       onPressed: _finish,
+                      style: TextButton.styleFrom(
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                        minimumSize: Size.zero,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 10,
+                          horizontal: 16,
+                        ),
+                      ),
                       child: Text('Skip', style: Ae.body(15, c: Ae.dim)),
                     ),
                 ],

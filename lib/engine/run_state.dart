@@ -86,6 +86,9 @@ class RunState {
   int aidsCalled = 0;
   int turnsTaken = 0;
 
+  /// Battles, elites and bosses finished this run. Used to space interstitials.
+  int combatClears = 0;
+
   /// One entry per floor: HP on arrival. Drawn as the run's pulse line.
   List<int> hpTrail = [];
 
@@ -100,6 +103,7 @@ class RunState {
     'draughts': draughtsDrunk,
     'aids': aidsCalled,
     'turns': turnsTaken,
+    'clears': combatClears,
     'trail': hpTrail,
   };
 
@@ -115,6 +119,7 @@ class RunState {
     draughtsDrunk = j['draughts'] ?? 0;
     aidsCalled = j['aids'] ?? 0;
     turnsTaken = j['turns'] ?? 0;
+    combatClears = j['clears'] ?? 0;
     hpTrail = List<int>.from(j['trail'] ?? []);
   }
 
@@ -236,6 +241,8 @@ class MetaState {
   bool music = true;
   bool sfx = true;
   bool adsRemoved = false;
+  String rewardedShardDay = '';
+  int rewardedShardCount = 0;
 
   // ------------------------------------------------------- preferences
   /// Multiplies every text size in the game. Some people need bigger type and
@@ -290,6 +297,25 @@ class MetaState {
   bool get extraRelic => upgrades.contains('sigil');
   bool get extraCardChoice => upgrades.contains('archive');
 
+  static String get _todayKey {
+    final n = DateTime.now();
+    return '${n.year}-${n.month}-${n.day}';
+  }
+
+  int get shardWatchesLeft {
+    const cap = 3;
+    if (rewardedShardDay != _todayKey) return cap;
+    return (cap - rewardedShardCount).clamp(0, cap);
+  }
+
+  void noteShardWatch() {
+    if (rewardedShardDay != _todayKey) {
+      rewardedShardDay = _todayKey;
+      rewardedShardCount = 0;
+    }
+    rewardedShardCount++;
+  }
+
   Map<String, dynamic> toJson() => {
     'shards': shards,
     'runs': runs,
@@ -306,6 +332,8 @@ class MetaState {
     'music': music,
     'sfx': sfx,
     'adsRemoved': adsRemoved,
+    'rewardedShardDay': rewardedShardDay,
+    'rewardedShardCount': rewardedShardCount,
     'textScale': textScale,
     'colourblind': colourblind,
     'reducedMotion': reducedMotion,
@@ -332,6 +360,8 @@ class MetaState {
     m.music = j['music'] ?? true;
     m.sfx = j['sfx'] ?? true;
     m.adsRemoved = j['adsRemoved'] ?? false;
+    m.rewardedShardDay = j['rewardedShardDay'] ?? '';
+    m.rewardedShardCount = j['rewardedShardCount'] ?? 0;
     m.textScale = (j['textScale'] as num?)?.toDouble() ?? 1.0;
     m.colourblind = j['colourblind'] ?? false;
     m.reducedMotion = j['reducedMotion'] ?? false;

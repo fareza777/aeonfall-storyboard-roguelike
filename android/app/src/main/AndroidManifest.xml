@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
     <application
-        android:label="Aeonfall: Storyboard RPG"
+        android:label="Aeonfall: Roguelike RPG"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <meta-data

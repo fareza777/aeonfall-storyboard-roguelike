@@ -5,6 +5,7 @@ import '../data/potions.dart';
 import '../data/relics.dart';
 import '../engine/core.dart';
 import '../game.dart';
+import '../monetization/monetization_service.dart';
 import '../theme.dart';
 import 'map_screen.dart';
 import 'result_screen.dart';
@@ -46,28 +47,44 @@ class _RewardScreenState extends State<RewardScreen> {
   bool _relicTaken = false;
   bool _cardTaken = false;
   bool _potionTaken = false;
+  bool _bonusWatched = false;
+  bool _watchBusy = false;
   late final List<CardDef> _offer = Game.i.director!.cardReward();
   late final RelicDef _relic = widget.bossRelicId != null
       ? relicDef(widget.bossRelicId!)
       : Game.i.director!.relicReward();
-  late final PotionDef? _potion = Game.i.director!
-      .potionDrop(widget.isBoss ? 'boss' : (widget.relic ? 'elite' : 'normal'));
+  late final PotionDef? _potion = Game.i.director!.potionDrop(
+    widget.isBoss ? 'boss' : (widget.relic ? 'elite' : 'normal'),
+  );
 
   /// Keystone: "Elites drop an extra sigil." It never did — nothing in the
   /// game read the relic. This is that second sigil.
   bool _extraTaken = false;
   late final RelicDef? _extraRelic =
       widget.relic && !widget.isBoss && Game.i.run!.relics.contains('keystone')
-          ? Game.i.director!.relicReward()
-          : null;
+      ? Game.i.director!.relicReward()
+      : null;
 
   bool get _done =>
-      _goldTaken && (!widget.relic || _relicTaken) && (!widget.cards || _cardTaken);
+      _goldTaken &&
+      (!widget.relic || _relicTaken) &&
+      (!widget.cards || _cardTaken);
 
   @override
   void initState() {
     super.initState();
+    MonetizationService.i.addListener(_refreshAds);
     Audio.i.music(widget.isBoss ? 'hub' : 'map');
+  }
+
+  void _refreshAds() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    MonetizationService.i.removeListener(_refreshAds);
+    super.dispose();
   }
 
   /// Guards against a second tap. The act-advance route transition takes a
@@ -76,176 +93,244 @@ class _RewardScreenState extends State<RewardScreen> {
   /// against a map that had already been replaced.
   bool _leaving = false;
 
-  void _continue() {
-    if (_leaving) return;
-    _leaving = true;
+  void _continue() async {
+    if (_leaving || _watchBusy) return;
+    setState(() => _leaving = true);
     Audio.i.sfx('confirm');
     final g = Game.i;
+    if (widget.cards) {
+      g.run?.combatClears++;
+    }
     g.completeNode(widget.nodeId);
     if (!widget.isBoss) {
+      if (widget.cards) {
+        await MonetizationService.i.showInterstitialIfDue(
+          InterstitialBreak.combat,
+        );
+      }
+      if (!mounted) return;
       Navigator.of(context).pop();
       return;
     }
     if (g.run!.act >= 3) {
+      if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const FinaleScreen()),
         (r) => r.isFirst,
       );
-    } else {
-      g.nextAct();
-      // A new act means a new map. Popping back put the player on the *same*
-      // MapScreen instance whose map had just been swapped out underneath it,
-      // which is exactly the kind of stale state that leaves a blank screen.
-      // Give the new act a screen of its own and drop the old stack.
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const MapScreen()),
-        (r) => r.isFirst,
-      );
+      return;
     }
+    await MonetizationService.i.showInterstitialIfDue(
+      InterstitialBreak.actClear,
+    );
+    if (!mounted) return;
+    g.nextAct();
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const MapScreen()),
+      (r) => r.isFirst,
+    );
   }
 
   @override
   Widget build(BuildContext context) => PopScope(
-        canPop: false,
-        child: Scaffold(
-          body: Column(
-            children: [
-              RunHud(),
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+    canPop: false,
+    child: Scaffold(
+      body: Column(
+        children: [
+          RunHud(),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Stack(
                     children: [
-                      Stack(children: [
-                        SizedBox(height: 168, width: double.infinity, child: Art(widget.art)),
-                        Positioned.fill(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [Colors.transparent, Ae.ink],
-                                stops: const [.3, 1],
-                              ),
+                      SizedBox(
+                        height: 168,
+                        width: double.infinity,
+                        child: Art(widget.art),
+                      ),
+                      Positioned.fill(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Colors.transparent, Ae.ink],
+                              stops: const [.3, 1],
                             ),
                           ),
                         ),
-                        Positioned(
-                          left: 18,
-                          bottom: 10,
-                          right: 18,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(widget.title, style: Ae.display(24)),
-                              const SizedBox(height: 4),
-                              Text(widget.blurb, style: Ae.body(15, c: Ae.dim)),
-                            ],
-                          ),
-                        ),
-                      ]),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(18, 16, 18, 30),
+                      ),
+                      Positioned(
+                        left: 18,
+                        bottom: 10,
+                        right: 18,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _goldRow(),
-                            if (widget.relic) ...[
-                              const SizedBox(height: 14),
-                              _relicRow(),
-                            ],
-                            if (_extraRelic != null) ...[
-                              const SizedBox(height: 14),
-                              _relicRow(_extraRelic, true),
-                            ],
-                            if (_potion != null) ...[
-                              const SizedBox(height: 14),
-                              _potionRow(_potion),
-                            ],
-                            if (widget.cards) ...[
-                              const SizedBox(height: 20),
-                              Text('CHOOSE A FRAME', style: Ae.label(14)),
-                              const SizedBox(height: 10),
-                              _cardOffer(),
-                            ],
-                            const SizedBox(height: 26),
-                            AeButton(
-                              label: _done ? 'Continue' : 'Skip the rest and continue',
-                              big: true,
-                              color: _done ? Ae.gold : Ae.dim,
-                              onTap: _continue,
-                            ),
+                            Text(widget.title, style: Ae.display(24)),
+                            const SizedBox(height: 4),
+                            Text(widget.blurb, style: Ae.body(15, c: Ae.dim)),
                           ],
                         ),
                       ),
                     ],
                   ),
-                ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 16, 18, 30),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _goldRow(),
+                        if (widget.relic) ...[
+                          const SizedBox(height: 14),
+                          _relicRow(),
+                        ],
+                        if (_extraRelic != null) ...[
+                          const SizedBox(height: 14),
+                          _relicRow(_extraRelic, true),
+                        ],
+                        if (_potion != null) ...[
+                          const SizedBox(height: 14),
+                          _potionRow(_potion),
+                        ],
+                        if (widget.cards) ...[
+                          const SizedBox(height: 20),
+                          Text('CHOOSE A FRAME', style: Ae.label(14)),
+                          const SizedBox(height: 10),
+                          _cardOffer(),
+                        ],
+                        const SizedBox(height: 26),
+                        AeButton(
+                          label: _done
+                              ? 'Continue'
+                              : 'Skip the rest and continue',
+                          big: true,
+                          color: _done ? Ae.gold : Ae.dim,
+                          enabled: !_watchBusy && !_leaving,
+                          onTap: _continue,
+                        ),
+                        if (widget.cards &&
+                            MonetizationService.i.rewardedReady &&
+                            !_bonusWatched) ...[
+                          const SizedBox(height: 10),
+                          AeButton(
+                            label: _watchBusy
+                                ? 'Loading…'
+                                : 'Watch for +${MonetizationService.combatWatchGold} Aeon',
+                            color: Ae.volt,
+                            enabled: !_watchBusy && !_leaving,
+                            onTap: _watchGold,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
+
+  Future<void> _watchGold() async {
+    if (_watchBusy || _bonusWatched || _leaving) return;
+    final run = Game.i.run;
+    if (run == null) return;
+    setState(() => _watchBusy = true);
+    final earned = await MonetizationService.i.showRewarded(
+      onEarned: () {
+        run.gold += MonetizationService.combatWatchGold;
+        if (identical(Game.i.run, run)) Game.i.saveRun();
+      },
+    );
+    if (!mounted) return;
+    if (earned) {
+      Audio.i.sfx('coin');
+      setState(() {
+        _bonusWatched = true;
+        _watchBusy = false;
+      });
+    } else {
+      setState(() => _watchBusy = false);
+    }
+  }
 
   Widget _goldRow() => GestureDetector(
-        onTap: _goldTaken
-            ? null
-            : () {
-                Audio.i.sfx('coin');
-                setState(() {
-                  Game.i.run!.gold += widget.gold;
-                  _goldTaken = true;
-                });
-                Game.i.saveRun();
-              },
-        child: AePanel(
-          border: _goldTaken ? Ae.panelHi : Ae.gold,
-          child: Row(children: [
-            const Text('◈', style: TextStyle(fontSize: 30, color: Ae.gold)),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Text('${widget.gold} Aeon',
-                  style: Ae.body(19, w: 800, c: _goldTaken ? Ae.dim : Ae.bone)),
+    onTap: _goldTaken
+        ? null
+        : () {
+            Audio.i.sfx('coin');
+            setState(() {
+              Game.i.run!.gold += widget.gold;
+              _goldTaken = true;
+            });
+            Game.i.saveRun();
+          },
+    child: AePanel(
+      border: _goldTaken ? Ae.panelHi : Ae.gold,
+      child: Row(
+        children: [
+          const Text('◈', style: TextStyle(fontSize: 30, color: Ae.gold)),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              '${widget.gold} Aeon',
+              style: Ae.body(19, w: 800, c: _goldTaken ? Ae.dim : Ae.bone),
             ),
-            Text(_goldTaken ? 'TAKEN' : 'TAP TO TAKE', style: Ae.label(12)),
-          ]),
-        ),
-      );
+          ),
+          Text(_goldTaken ? 'TAKEN' : 'TAP TO TAKE', style: Ae.label(12)),
+        ],
+      ),
+    ),
+  );
 
   Widget _relicRow([RelicDef? which, bool extra = false]) {
     final rel = which ?? _relic;
     final taken = extra ? _extraTaken : _relicTaken;
     return GestureDetector(
-        onTap: taken
-            ? null
-            : () {
-                Audio.i.sfx('relic');
-                setState(() {
-                  Game.i.run!.addRelic(rel.id);
-                  if (extra) {
-                    _extraTaken = true;
-                  } else {
-                    _relicTaken = true;
-                  }
-                });
-                Game.i.saveRun();
-              },
-        child: AePanel(
-          border: taken ? Ae.panelHi : rel.rarity.color,
-          child: Row(children: [
+      onTap: taken
+          ? null
+          : () {
+              Audio.i.sfx('relic');
+              setState(() {
+                Game.i.run!.addRelic(rel.id);
+                if (extra) {
+                  _extraTaken = true;
+                } else {
+                  _relicTaken = true;
+                }
+              });
+              Game.i.saveRun();
+            },
+      child: AePanel(
+        border: taken ? Ae.panelHi : rel.rarity.color,
+        child: Row(
+          children: [
             SizedBox(width: 52, height: 52, child: Art(rel.artKey())),
             const SizedBox(width: 14),
             Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(extra ? '${rel.name.toUpperCase()}  ·  KEYSTONE' : rel.name.toUpperCase(),
-                    style: Ae.label(15, c: taken ? Ae.dim : Ae.bone)),
-                const SizedBox(height: 4),
-                Text(rel.desc, style: Ae.body(15, c: Ae.dim)),
-              ]),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    extra
+                        ? '${rel.name.toUpperCase()}  ·  KEYSTONE'
+                        : rel.name.toUpperCase(),
+                    style: Ae.label(15, c: taken ? Ae.dim : Ae.bone),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(rel.desc, style: Ae.body(15, c: Ae.dim)),
+                ],
+              ),
             ),
-          ]),
+          ],
         ),
-      );
+      ),
+    );
   }
 
   /// A draught drop. If the belt is full the row says so rather than
@@ -267,67 +352,78 @@ class _RewardScreenState extends State<RewardScreen> {
             },
       child: AePanel(
         border: _potionTaken ? Ae.panelHi : (full ? Ae.blood : c),
-        child: Row(children: [
-          Container(
-            width: 46,
-            height: 52,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: c.withValues(alpha: .9), width: 1.4),
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [c.withValues(alpha: .38), c.withValues(alpha: .10)],
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 52,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: c.withValues(alpha: .9), width: 1.4),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [c.withValues(alpha: .38), c.withValues(alpha: .10)],
+                ),
+              ),
+              child: Center(
+                child: Text(
+                  p.elem == Elem.none ? '◈' : p.elem.glyph,
+                  style: TextStyle(fontSize: 22, color: c, height: 1),
+                ),
               ),
             ),
-            child: Center(
-              child: Text(p.elem == Elem.none ? '◈' : p.elem.glyph,
-                  style: TextStyle(fontSize: 22, color: c, height: 1)),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    p.name.toUpperCase(),
+                    style: Ae.label(15, c: _potionTaken ? Ae.dim : Ae.bone),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(p.desc, style: Ae.body(15, c: Ae.dim)),
+                  if (full) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'YOUR BELT IS FULL — DRINK ONE FIRST',
+                      style: Ae.label(11, c: Ae.blood),
+                    ),
+                  ],
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(p.name.toUpperCase(),
-                  style: Ae.label(15, c: _potionTaken ? Ae.dim : Ae.bone)),
-              const SizedBox(height: 4),
-              Text(p.desc, style: Ae.body(15, c: Ae.dim)),
-              if (full) ...[
-                const SizedBox(height: 4),
-                Text('YOUR BELT IS FULL — DRINK ONE FIRST',
-                    style: Ae.label(11, c: Ae.blood)),
-              ],
-            ]),
-          ),
-        ]),
+          ],
+        ),
       ),
     );
   }
 
   Widget _cardOffer() => SizedBox(
-        height: 232,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: _offer.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 10),
-          itemBuilder: (_, i) {
-            final c = _offer[i];
-            return FrameCard(
-              card: CardInst(c),
-              width: 146,
-              playable: !_cardTaken,
-              onTap: _cardTaken
-                  ? null
-                  : () {
-                      Audio.i.sfx('levelup');
-                      setState(() {
-                        Game.i.run!.addCard(c.id);
-                        _cardTaken = true;
-                      });
-                      Game.i.saveRun();
-                    },
-            );
-          },
-        ),
-      );
+    height: 232,
+    child: ListView.separated(
+      scrollDirection: Axis.horizontal,
+      itemCount: _offer.length,
+      separatorBuilder: (_, __) => const SizedBox(width: 10),
+      itemBuilder: (_, i) {
+        final c = _offer[i];
+        return FrameCard(
+          card: CardInst(c),
+          width: 146,
+          playable: !_cardTaken,
+          onTap: _cardTaken
+              ? null
+              : () {
+                  Audio.i.sfx('levelup');
+                  setState(() {
+                    Game.i.run!.addCard(c.id);
+                    _cardTaken = true;
+                  });
+                  Game.i.saveRun();
+                },
+        );
+      },
+    ),
+  );
 }

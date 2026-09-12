@@ -56,7 +56,7 @@ class _RemoveAdsPanelState extends State<RemoveAdsPanel> {
   Widget build(BuildContext context) {
     final removed = _service.adsRemoved;
     final product = _service.product;
-    final price = product?.price ?? r'$4.99';
+    final price = product?.price;
     return AePanel(
       border: removed ? Ae.good : Ae.volt,
       ornament: true,
@@ -73,13 +73,17 @@ class _RemoveAdsPanelState extends State<RemoveAdsPanel> {
           Text(
             removed
                 ? 'Ads are removed on this Google Play account.'
-                : 'Remove Sanctum and run-result ads permanently.',
+                : 'Remove interstitial and optional rewarded ads permanently.',
             style: Ae.body(14.5, c: Ae.bone, h: 1.4),
           ),
           const SizedBox(height: 12),
           if (!removed)
             AeButton(
-              label: _busy ? 'Contacting Google Play…' : 'Remove Ads · $price',
+              label: _busy
+                  ? 'Contacting Google Play…'
+                  : price == null
+                  ? 'Upgrade unavailable'
+                  : 'Remove Ads · $price',
               color: Ae.volt,
               enabled: !_busy && _service.purchaseAvailable,
               onTap: _buy,
@@ -88,20 +92,34 @@ class _RemoveAdsPanelState extends State<RemoveAdsPanel> {
           Wrap(
             alignment: WrapAlignment.spaceBetween,
             runAlignment: WrapAlignment.center,
-            runSpacing: 8,
+            runSpacing: 4,
             children: [
               GestureDetector(
                 onTap: _busy ? null : _restore,
-                child: Text(
-                  'RESTORE PURCHASE',
-                  style: Ae.label(11.5, c: Ae.goldSoft),
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 10,
+                    horizontal: 2,
+                  ),
+                  child: Text(
+                    'RESTORE PURCHASE',
+                    style: Ae.label(11.5, c: Ae.goldSoft),
+                  ),
                 ),
               ),
               GestureDetector(
                 onTap: _openPrivacy,
-                child: Text(
-                  'PRIVACY POLICY',
-                  style: Ae.label(11.5, c: Ae.goldSoft),
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 10,
+                    horizontal: 2,
+                  ),
+                  child: Text(
+                    'PRIVACY POLICY',
+                    style: Ae.label(11.5, c: Ae.goldSoft),
+                  ),
                 ),
               ),
             ],

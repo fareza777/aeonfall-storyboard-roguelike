@@ -8,6 +8,7 @@ import '../engine/map_gen.dart';
 import '../engine/run_state.dart';
 import '../game.dart';
 import '../main.dart';
+import '../monetization/monetization_service.dart';
 import '../theme.dart';
 import 'battle_screen.dart';
 import 'event_screen.dart';
@@ -30,6 +31,15 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> with RouteAware {
   final _scroll = ScrollController();
+  bool _leaving = false;
+
+  Future<void> _returnToHub() async {
+    if (_leaving) return;
+    _leaving = true;
+    await MonetizationService.i.showInterstitialIfDue(InterstitialBreak.hub);
+    if (!mounted) return;
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
 
   @override
   void initState() {
@@ -181,7 +191,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) Navigator.of(context).popUntil((route) => route.isFirst);
+        if (!didPop) _returnToHub();
       },
       child: Scaffold(
         body: Stack(
@@ -193,7 +203,7 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
             ),
             Column(
               children: [
-                RunHud(onBack: () => Navigator.of(context).popUntil((r2) => r2.isFirst)),
+                RunHud(onBack: _returnToHub),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(14, 10, 14, 4),
                   child: Row(
