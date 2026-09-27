@@ -46,3 +46,7 @@ app.*.map.json
 /android/build/
 /promo/node_modules/
 /promo/out/preview/
+
+# Release binaries are delivered, not versioned.
+*.aab
+*.apk

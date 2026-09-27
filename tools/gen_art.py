@@ -29,6 +29,27 @@ try:
 except ImportError:
     pass
 
+# Face-concealed rewrites. Appended last so they win for the keys they cover.
+try:
+    from manifest_v3 import V3
+    ASSETS = ASSETS + V3
+except ImportError:
+    pass
+
+# Second concealment pass, for the ones the first pass did not take on.
+try:
+    from manifest_v4 import V4
+    ASSETS = ASSETS + V4
+except ImportError:
+    pass
+
+# Third pass, using phrasing that was probed before it was used.
+try:
+    from manifest_v5 import V5
+    ASSETS = ASSETS + V5
+except ImportError:
+    pass
+
 TOKEN = os.environ.get("REPLICATE_API_TOKEN", "").strip()
 if not TOKEN:
     sys.exit("REPLICATE_API_TOKEN not set")
@@ -141,7 +162,14 @@ def process(asset):
 
 def main():
     groups = set(sys.argv[1:])
-    work = [x for x in ASSETS if not groups or x["group"] in groups]
+    # LATEST WINS. The manifests are concatenated, so a key rewritten in a
+    # later manifest also still appears with its original prompt. Without this
+    # the worker pool raced: whichever copy reached the file first won, which
+    # was usually the old one, and the rewrite silently never ran.
+    latest = {}
+    for x in ASSETS:
+        latest[x["key"]] = x
+    work = [x for x in latest.values() if not groups or x["group"] in groups]
     os.makedirs(OUT, exist_ok=True)
     print(f"generating {len(work)} assets -> {OUT}", flush=True)
     workers = int(os.environ.get("AE_WORKERS", "8"))
