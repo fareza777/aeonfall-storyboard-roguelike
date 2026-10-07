@@ -4,6 +4,9 @@ import '../audio.dart';
 import '../data/potions.dart';
 import '../data/relics.dart';
 import '../engine/core.dart';
+import '../engine/pending_reward.dart';
+import '../engine/run_state.dart';
+import '../data/cards.dart';
 import '../game.dart';
 import '../monetization/monetization_service.dart';
 import '../theme.dart';
@@ -38,32 +41,42 @@ class RewardScreen extends StatefulWidget {
   final String blurb;
   final String art;
 
+  factory RewardScreen.resume(PendingReward reward) => RewardScreen(
+    nodeId: reward.nodeId,
+    gold: reward.gold,
+    relic: reward.relic,
+    cards: reward.cards,
+    isBoss: reward.isBoss,
+    bossRelicId: reward.relicId,
+    title: reward.title,
+    blurb: reward.blurb,
+    art: reward.art,
+  );
+
   @override
   State<RewardScreen> createState() => _RewardScreenState();
 }
 
 class _RewardScreenState extends State<RewardScreen> {
-  bool _goldTaken = false;
-  bool _relicTaken = false;
-  bool _cardTaken = false;
-  bool _potionTaken = false;
-  bool _bonusWatched = false;
+  late final RunState _run;
+  late final PendingReward _reward;
+  bool get _goldTaken => _reward.goldTaken;
+  bool get _relicTaken => _reward.relicTaken;
+  bool get _cardTaken => _reward.cardTaken;
+  bool get _potionTaken => _reward.potionTaken;
+  bool get _bonusWatched => _reward.bonusTaken;
+  bool get _extraTaken => _reward.extraTaken;
+  bool get _active =>
+      identical(Game.i.run, _run) &&
+      identical(_run.pendingReward, _reward) &&
+      _run.canClaimReward;
   bool _watchBusy = false;
-  late final List<CardDef> _offer = Game.i.director!.cardReward();
-  late final RelicDef _relic = widget.bossRelicId != null
-      ? relicDef(widget.bossRelicId!)
-      : Game.i.director!.relicReward();
-  late final PotionDef? _potion = Game.i.director!.potionDrop(
-    widget.isBoss ? 'boss' : (widget.relic ? 'elite' : 'normal'),
-  );
-
-  /// Keystone: "Elites drop an extra sigil." It never did — nothing in the
-  /// game read the relic. This is that second sigil.
-  bool _extraTaken = false;
-  late final RelicDef? _extraRelic =
-      widget.relic && !widget.isBoss && Game.i.run!.relics.contains('keystone')
-      ? Game.i.director!.relicReward()
-      : null;
+  List<CardDef> get _offer => _reward.cardIds.map(cardDef).toList();
+  RelicDef get _relic => relicDef(_reward.relicId!);
+  PotionDef? get _potion =>
+      _reward.potionId == null ? null : potionDef(_reward.potionId!);
+  RelicDef? get _extraRelic =>
+      _reward.extraRelicId == null ? null : relicDef(_reward.extraRelicId!);
 
   bool get _done =>
       _goldTaken &&
@@ -73,6 +86,50 @@ class _RewardScreenState extends State<RewardScreen> {
   @override
   void initState() {
     super.initState();
+    final g = Game.i;
+    _run = g.run!;
+    final saved = _run.pendingReward;
+    if (saved != null &&
+        saved.act == _run.act &&
+        saved.nodeId == widget.nodeId) {
+      _reward = saved;
+    } else {
+      final d = g.director!;
+      _reward = PendingReward(
+        act: _run.act,
+        nodeId: widget.nodeId,
+        gold: widget.gold,
+        relic: widget.relic,
+        cards: widget.cards,
+        isBoss: widget.isBoss,
+        title: widget.title,
+        blurb: widget.blurb,
+        art: widget.art,
+        cardIds: widget.cards
+            ? d.cardReward().map((c) => c.id).toList()
+            : const [],
+        relicId: widget.relic
+            ? (widget.bossRelicId ?? d.relicReward().id)
+            : null,
+        potionId: d
+            .potionDrop(
+              widget.isBoss ? 'boss' : (widget.relic ? 'elite' : 'normal'),
+            )
+            ?.id,
+        extraRelicId:
+            widget.relic && !widget.isBoss && _run.relics.contains('keystone')
+            ? d.relicReward().id
+            : null,
+      );
+      final node = _run.map?.tryById(widget.nodeId);
+      if (node != null &&
+          !node.visited &&
+          _run.map!.available.contains(node.id)) {
+        _run.pendingReward = _reward;
+        // Do not notify sibling routes while this route is being built.
+        g.saveRun(notify: false);
+      }
+    }
     MonetizationService.i.addListener(_refreshAds);
     Audio.i.music(widget.isBoss ? 'hub' : 'map');
   }
@@ -95,12 +152,20 @@ class _RewardScreenState extends State<RewardScreen> {
 
   void _continue() async {
     if (_leaving || _watchBusy) return;
+    final canFinishBoss =
+        identical(Game.i.run, _run) &&
+        identical(_run.pendingReward, _reward) &&
+        _reward.act == _run.act &&
+        _reward.isBoss &&
+        _reward.resolved;
+    if (!_active && !canFinishBoss) {
+      Navigator.of(context).pop();
+      return;
+    }
     setState(() => _leaving = true);
     Audio.i.sfx('confirm');
     final g = Game.i;
-    if (widget.cards) {
-      g.run?.combatClears++;
-    }
+    if (!identical(g.run, _run)) return;
     g.completeNode(widget.nodeId);
     if (!widget.isBoss) {
       if (widget.cards) {
@@ -193,7 +258,7 @@ class _RewardScreenState extends State<RewardScreen> {
                         ],
                         if (_potion != null) ...[
                           const SizedBox(height: 14),
-                          _potionRow(_potion),
+                          _potionRow(_potion!),
                         ],
                         if (widget.cards) ...[
                           const SizedBox(height: 20),
@@ -237,21 +302,21 @@ class _RewardScreenState extends State<RewardScreen> {
   );
 
   Future<void> _watchGold() async {
-    if (_watchBusy || _bonusWatched || _leaving) return;
-    final run = Game.i.run;
-    if (run == null) return;
+    if (_watchBusy || _bonusWatched || _leaving || !_active) return;
+    final run = _run;
     setState(() => _watchBusy = true);
     final earned = await MonetizationService.i.showRewarded(
       onEarned: () {
-        run.gold += MonetizationService.combatWatchGold;
-        if (identical(Game.i.run, run)) Game.i.saveRun();
+        if (_active &&
+            run.claimRewardBonus(MonetizationService.combatWatchGold)) {
+          Game.i.saveRun();
+        }
       },
     );
     if (!mounted) return;
     if (earned) {
       Audio.i.sfx('coin');
       setState(() {
-        _bonusWatched = true;
         _watchBusy = false;
       });
     } else {
@@ -260,14 +325,12 @@ class _RewardScreenState extends State<RewardScreen> {
   }
 
   Widget _goldRow() => GestureDetector(
-    onTap: _goldTaken
+    onTap: _goldTaken || !_active
         ? null
         : () {
+            if (!_run.claimRewardGold()) return;
             Audio.i.sfx('coin');
-            setState(() {
-              Game.i.run!.gold += widget.gold;
-              _goldTaken = true;
-            });
+            setState(() {});
             Game.i.saveRun();
           },
     child: AePanel(
@@ -278,7 +341,7 @@ class _RewardScreenState extends State<RewardScreen> {
           const SizedBox(width: 14),
           Expanded(
             child: Text(
-              '${widget.gold} Aeon',
+              '${_reward.gold} Aeon',
               style: Ae.body(19, w: 800, c: _goldTaken ? Ae.dim : Ae.bone),
             ),
           ),
@@ -292,18 +355,12 @@ class _RewardScreenState extends State<RewardScreen> {
     final rel = which ?? _relic;
     final taken = extra ? _extraTaken : _relicTaken;
     return GestureDetector(
-      onTap: taken
+      onTap: taken || !_active
           ? null
           : () {
+              if (!_run.claimRewardRelic(extra: extra)) return;
               Audio.i.sfx('relic');
-              setState(() {
-                Game.i.run!.addRelic(rel.id);
-                if (extra) {
-                  _extraTaken = true;
-                } else {
-                  _relicTaken = true;
-                }
-              });
+              setState(() {});
               Game.i.saveRun();
             },
       child: AePanel(
@@ -340,14 +397,12 @@ class _RewardScreenState extends State<RewardScreen> {
     final c = p.elem == Elem.none ? Ae.gold : p.elem.color;
     final full = run.beltFull && !_potionTaken;
     return GestureDetector(
-      onTap: _potionTaken || full
+      onTap: _potionTaken || full || !_active
           ? null
           : () {
+              if (!_run.claimRewardPotion()) return;
               Audio.i.sfx('relic');
-              setState(() {
-                run.addPotion(p.id);
-                _potionTaken = true;
-              });
+              setState(() {});
               Game.i.saveRun();
             },
       child: AePanel(
@@ -411,15 +466,13 @@ class _RewardScreenState extends State<RewardScreen> {
         return FrameCard(
           card: CardInst(c),
           width: 146,
-          playable: !_cardTaken,
-          onTap: _cardTaken
+          playable: !_cardTaken && _active,
+          onTap: _cardTaken || !_active
               ? null
               : () {
+                  if (!_run.claimRewardCard(c.id)) return;
                   Audio.i.sfx('levelup');
-                  setState(() {
-                    Game.i.run!.addCard(c.id);
-                    _cardTaken = true;
-                  });
+                  setState(() {});
                   Game.i.saveRun();
                 },
         );

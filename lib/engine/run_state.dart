@@ -4,6 +4,7 @@ import '../data/cards.dart';
 import '../data/vessels.dart';
 import 'core.dart';
 import 'map_gen.dart';
+import 'pending_reward.dart';
 import 'rng.dart';
 
 /// Everything about the current run. Persisted so a run survives app restarts.
@@ -45,6 +46,71 @@ class RunState {
   late List<CardInst> deck;
   late List<String> relics;
   StoryMap? map;
+  PendingReward? pendingReward;
+
+  bool get canClaimReward {
+    final reward = pendingReward;
+    final node = reward == null ? null : map?.tryById(reward.nodeId);
+    return reward != null &&
+        reward.act == act &&
+        !reward.resolved &&
+        node != null &&
+        !node.visited &&
+        map!.available.contains(node.id);
+  }
+
+  bool claimRewardGold() {
+    if (!canClaimReward || pendingReward!.goldTaken) return false;
+    final reward = pendingReward!;
+    reward.goldTaken = true;
+    gold += reward.gold;
+    return true;
+  }
+
+  bool claimRewardBonus(int amount) {
+    if (!canClaimReward ||
+        !pendingReward!.cards ||
+        pendingReward!.bonusTaken ||
+        amount <= 0)
+      return false;
+    pendingReward!.bonusTaken = true;
+    gold += amount;
+    return true;
+  }
+
+  bool claimRewardCard(String id) {
+    if (!canClaimReward ||
+        !pendingReward!.cards ||
+        pendingReward!.cardTaken ||
+        !pendingReward!.cardIds.contains(id))
+      return false;
+    pendingReward!.cardTaken = true;
+    addCard(id);
+    return true;
+  }
+
+  bool claimRewardRelic({bool extra = false}) {
+    if (!canClaimReward) return false;
+    final reward = pendingReward!;
+    final id = extra ? reward.extraRelicId : reward.relicId;
+    if (id == null || (extra ? reward.extraTaken : reward.relicTaken))
+      return false;
+    if (extra) {
+      reward.extraTaken = true;
+    } else {
+      reward.relicTaken = true;
+    }
+    addRelic(id);
+    return true;
+  }
+
+  bool claimRewardPotion() {
+    if (!canClaimReward || pendingReward!.potionTaken) return false;
+    final id = pendingReward!.potionId;
+    if (id == null || !addPotion(id)) return false;
+    pendingReward!.potionTaken = true;
+    return true;
+  }
 
   /// The draught belt. Three slots, four with the Deep Satchel.
   List<String> potions = [];
@@ -172,6 +238,7 @@ class RunState {
     'relics': relics,
     'potions': potions,
     'map': map?.toJson(),
+    'pendingReward': pendingReward?.toJson(),
     'chron': chronicleId,
     'antag': antagonistId,
     'betrayer': betrayerId,
@@ -207,6 +274,9 @@ class RunState {
     r.relics = List<String>.from(j['relics']);
     r.potions = List<String>.from(j['potions'] ?? []);
     r.map = j['map'] == null ? null : StoryMap.fromJson(j['map']);
+    r.pendingReward = j['pendingReward'] == null
+        ? null
+        : PendingReward.fromJson(Map<String, dynamic>.from(j['pendingReward']));
     r.chronicleId = j['chron'] ?? '';
     r.antagonistId = j['antag'] ?? '';
     r.betrayerId = j['betrayer'] ?? '';

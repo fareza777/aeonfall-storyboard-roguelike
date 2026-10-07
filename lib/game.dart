@@ -100,13 +100,13 @@ class Game extends ChangeNotifier {
 
   /// Persists the run *and* tells listening widgets to refresh. Every screen
   /// that mutates gold, HP or the deck calls this, so the HUD stays truthful.
-  void saveRun() {
+  void saveRun({bool notify = true}) {
     if (run == null) {
       _prefs?.remove(_kRun);
     } else {
       _prefs?.setString(_kRun, jsonEncode(run!.toJson()));
     }
-    notifyListeners();
+    if (notify) notifyListeners();
   }
 
   void save() {
@@ -194,6 +194,14 @@ class Game extends ChangeNotifier {
     map.available = List<int>.from(node.next);
     r.floor = node.layer;
     r.totalFloors++;
+    final reward = r.pendingReward;
+    if (reward != null && reward.act == r.act && reward.nodeId == nodeId) {
+      reward.resolved = true;
+      if (reward.cards) r.combatClears++;
+      // Keep a completed boss checkpoint across the ad/route transition.
+      // Otherwise a process kill can leave an empty map with no way forward.
+      if (!reward.isBoss) r.pendingReward = null;
+    }
     // One reading per floor — the run's pulse line on the summary screen.
     r.hpTrail.add(r.hp);
     if (r.relics.contains('ash_locket')) r.heal(6);
@@ -212,6 +220,7 @@ class Game extends ChangeNotifier {
   }
 
   void nextAct() {
+    run!.pendingReward = null;
     director!.advanceAct();
     save();
     notifyListeners();

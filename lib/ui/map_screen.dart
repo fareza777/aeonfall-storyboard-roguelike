@@ -13,6 +13,7 @@ import '../theme.dart';
 import 'battle_screen.dart';
 import 'event_screen.dart';
 import 'reward_screen.dart';
+import 'result_screen.dart';
 import 'rest_screen.dart';
 import 'run_hud.dart';
 import 'shop_screen.dart';
@@ -32,6 +33,7 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> with RouteAware {
   final _scroll = ScrollController();
   bool _leaving = false;
+  bool _rewardRouteOpen = false;
 
   Future<void> _returnToHub() async {
     if (_leaving) return;
@@ -85,12 +87,38 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
     // of a callback with nothing to catch it.
     final r = Game.i.run;
     if (r == null || !mounted) return;
+    final reward = r.pendingReward;
+    if (reward != null) {
+      final node = r.map?.tryById(reward.nodeId);
+      if (reward.act == r.act &&
+          node != null &&
+          (!node.visited || reward.isBoss)) {
+        if (_rewardRouteOpen) return;
+        _rewardRouteOpen = true;
+        final Widget screen = reward.resolved && reward.isBoss && r.act >= 3
+            ? const FinaleScreen()
+            : RewardScreen.resume(reward);
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => screen)).then((_) {
+          _rewardRouteOpen = false;
+          if (mounted) _maybeIntro();
+        });
+        return;
+      }
+      r.pendingReward = null;
+      Game.i.saveRun(notify: false);
+    }
     final key = 'intro_act${r.act}';
     if (r.flag(key)) return;
     r.setFlag(key);
     Game.i.saveRun();
     final c = chronicleById(r.chronicleId);
-    final text = switch (r.act) { 1 => c.actOne, 2 => c.actTwo, _ => c.actThree };
+    final text = switch (r.act) {
+      1 => c.actOne,
+      2 => c.actTwo,
+      _ => c.actThree,
+    };
     if (r.act == 1) {
       Audio.i.voice('chron_${c.id}');
     }
@@ -131,14 +159,17 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
       case NodeType.rest:
         _push(RestScreen(nodeId: n.id));
       case NodeType.treasure:
-        _push(RewardScreen(
-          nodeId: n.id,
-          gold: 40 + g.run!.act * 25,
-          relic: true,
-          title: 'A CACHE',
-          blurb: 'Somebody left this here for somebody. It may as well be you.',
-          art: 'site_treasure_room',
-        ));
+        _push(
+          RewardScreen(
+            nodeId: n.id,
+            gold: 40 + g.run!.act * 25,
+            relic: true,
+            title: 'A CACHE',
+            blurb:
+                'Somebody left this here for somebody. It may as well be you.',
+            art: 'site_treasure_room',
+          ),
+        );
     }
   }
 
@@ -213,8 +244,10 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(chron.title, style: Ae.display(19)),
-                            Text('ACT ${r.act} · ${_actName(r.act)}',
-                                style: Ae.label(12, c: Ae.goldSoft)),
+                            Text(
+                              'ACT ${r.act} · ${_actName(r.act)}',
+                              style: Ae.label(12, c: Ae.goldSoft),
+                            ),
                           ],
                         ),
                       ),
@@ -228,7 +261,10 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                                 margin: const EdgeInsets.only(left: 5),
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: Ae.gold, width: 1.4),
+                                  border: Border.all(
+                                    color: Ae.gold,
+                                    width: 1.4,
+                                  ),
                                 ),
                                 child: ClipOval(child: Art('comp_$c')),
                               ),
@@ -342,7 +378,10 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
               ],
             ),
             const SizedBox(height: 6),
-            Text(StoryDigest.objective(r), style: Ae.body(15.5, c: Ae.bone, w: 600)),
+            Text(
+              StoryDigest.objective(r),
+              style: Ae.body(15.5, c: Ae.bone, w: 600),
+            ),
             const SizedBox(height: 4),
             Text(StoryDigest.stake(r), style: Ae.body(13.5, c: Ae.dim)),
             const SizedBox(height: 10),
@@ -356,10 +395,14 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Ae.frost.withValues(alpha: .8)),
+                        border: Border.all(
+                          color: Ae.frost.withValues(alpha: .8),
+                        ),
                       ),
-                      child: Text('READ THE STORY SO FAR',
-                          style: Ae.label(12, c: Ae.frost)),
+                      child: Text(
+                        'READ THE STORY SO FAR',
+                        style: Ae.label(12, c: Ae.frost),
+                      ),
                     ),
                   ),
                 ),
@@ -372,17 +415,39 @@ class _MapScreenState extends State<MapScreen> with RouteAware {
   }
 
   String _actName(int act) => switch (act) {
-        1 => 'THE ROAD OUT',
-        2 => 'THE MACHINERY',
-        _ => 'THE UNWRITTEN',
-      };
+    1 => 'THE ROAD OUT',
+    2 => 'THE MACHINERY',
+    _ => 'THE UNWRITTEN',
+  };
 
   String _biomeFor(int act) {
     final r = Game.i.run!;
-    const a1 = ['biome_ashfall', 'biome_drowned', 'biome_ossuary', 'biome_emberreach', 'biome_gloamwood'];
-    const a2 = ['biome_clockwork', 'biome_bazaar', 'biome_stormspire', 'biome_brasslung', 'biome_saltcourt'];
-    const a3 = ['biome_unwritten', 'biome_vault', 'biome_thefall', 'biome_nullshore', 'biome_crownfall'];
-    final pool = switch (act) { 1 => a1, 2 => a2, _ => a3 };
+    const a1 = [
+      'biome_ashfall',
+      'biome_drowned',
+      'biome_ossuary',
+      'biome_emberreach',
+      'biome_gloamwood',
+    ];
+    const a2 = [
+      'biome_clockwork',
+      'biome_bazaar',
+      'biome_stormspire',
+      'biome_brasslung',
+      'biome_saltcourt',
+    ];
+    const a3 = [
+      'biome_unwritten',
+      'biome_vault',
+      'biome_thefall',
+      'biome_nullshore',
+      'biome_crownfall',
+    ];
+    final pool = switch (act) {
+      1 => a1,
+      2 => a2,
+      _ => a3,
+    };
     return pool[(r.seed + act) % pool.length];
   }
 }
@@ -428,10 +493,16 @@ class _NodeChip extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: Ae.ink2,
                 border: Border.all(
-                    color: active ? c : (current ? Ae.bone : Ae.panelHi),
-                    width: active ? 2.6 : 1.6),
+                  color: active ? c : (current ? Ae.bone : Ae.panelHi),
+                  width: active ? 2.6 : 1.6,
+                ),
                 boxShadow: active
-                    ? [BoxShadow(color: c.withValues(alpha: .55), blurRadius: 18)]
+                    ? [
+                        BoxShadow(
+                          color: c.withValues(alpha: .55),
+                          blurRadius: 18,
+                        ),
+                      ]
                     : null,
               ),
               child: Padding(
@@ -446,8 +517,10 @@ class _NodeChip extends StatelessWidget {
                 color: Ae.ink.withValues(alpha: .8),
                 borderRadius: BorderRadius.circular(5),
               ),
-              child: Text(node.type.label,
-                  style: Ae.label(10, c: active ? c : Ae.dim)),
+              child: Text(
+                node.type.label,
+                style: Ae.label(10, c: active ? c : Ae.dim),
+              ),
             ),
           ],
         ),
@@ -484,8 +557,18 @@ class _EdgePainter extends CustomPainter {
         final b = pos(m);
         final path = Path()
           ..moveTo(a.dx, a.dy)
-          ..cubicTo(a.dx, a.dy - layerH * .45, b.dx, b.dy + layerH * .45, b.dx, b.dy);
-        canvas.drawPath(path, n.visited && map.available.contains(id) ? pOn : p);
+          ..cubicTo(
+            a.dx,
+            a.dy - layerH * .45,
+            b.dx,
+            b.dy + layerH * .45,
+            b.dx,
+            b.dy,
+          );
+        canvas.drawPath(
+          path,
+          n.visited && map.available.contains(id) ? pOn : p,
+        );
       }
     }
   }
@@ -509,46 +592,50 @@ class _ActIntro extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(18),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Ae.ink2,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Ae.gold, width: 1.6),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(height: 170, width: double.infinity, child: Art(chronicle.art)),
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('ACT $act', style: Ae.label(13)),
-                        const SizedBox(height: 6),
-                        Text(chronicle.title, style: Ae.display(26)),
-                        const SizedBox(height: 4),
-                        Text(chronicle.subtitle, style: Ae.body(14, c: Ae.dim)),
-                        const SizedBox(height: 16),
-                        if (act == 1) ...[
-                          Prose(chronicle.premise, size: 16),
-                          const SizedBox(height: 14),
-                        ],
-                        Prose(text, size: 17),
-                        const SizedBox(height: 20),
-                        AeButton(label: 'Begin', big: true, onTap: onClose),
-                      ],
-                    ),
-                  ),
-                ],
+    backgroundColor: Colors.transparent,
+    insetPadding: const EdgeInsets.all(18),
+    child: Container(
+      decoration: BoxDecoration(
+        color: Ae.ink2,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Ae.gold, width: 1.6),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 170,
+                width: double.infinity,
+                child: Art(chronicle.art),
               ),
-            ),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('ACT $act', style: Ae.label(13)),
+                    const SizedBox(height: 6),
+                    Text(chronicle.title, style: Ae.display(26)),
+                    const SizedBox(height: 4),
+                    Text(chronicle.subtitle, style: Ae.body(14, c: Ae.dim)),
+                    const SizedBox(height: 16),
+                    if (act == 1) ...[
+                      Prose(chronicle.premise, size: 16),
+                      const SizedBox(height: 14),
+                    ],
+                    Prose(text, size: 17),
+                    const SizedBox(height: 20),
+                    AeButton(label: 'Begin', big: true, onTap: onClose),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
-      );
+      ),
+    ),
+  );
 }
