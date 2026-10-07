@@ -14,13 +14,13 @@ import 'run_state.dart';
 /// One participant in a fight.
 class Combatant {
   Combatant.hero(this.name, this.hp, this.maxHp)
-      : isPlayer = true,
-        def = null,
-        mods = const [];
+    : isPlayer = true,
+      def = null,
+      mods = const [];
 
   Combatant.foe(this.def, this.hp, this.maxHp, this.mods)
-      : isPlayer = false,
-        name = def!.name;
+    : isPlayer = false,
+      name = def!.name;
 
   final bool isPlayer;
   final EnemyDef? def;
@@ -146,8 +146,8 @@ class Battle {
     required this.foeDefs,
     required this.rng,
     required this.kind,
-  })  : hero = Combatant.hero(run.vessel.name, run.hp, run.maxHp),
-        foes = [] {
+  }) : hero = Combatant.hero(run.vessel.name, run.hp, run.maxHp),
+       foes = [] {
     _buildFoes();
   }
 
@@ -220,9 +220,14 @@ class Battle {
     final modPool = kEnemyMods.keys.toList();
     for (final d in foeDefs) {
       final mods = <String>[];
-      final chance = switch (run.act) { 1 => .18, 2 => .34, _ => .50 };
+      final chance = switch (run.act) {
+        1 => .18,
+        2 => .34,
+        _ => .50,
+      };
       if (d.tier == 0 && rng.chance(chance)) mods.add(rng.pick(modPool));
-      if (d.tier == 1 && (asc.elitesAlwaysMutated || rng.chance(chance + .15))) {
+      if (d.tier == 1 &&
+          (asc.elitesAlwaysMutated || rng.chance(chance + .15))) {
         mods.add(rng.pick(modPool));
       }
 
@@ -239,7 +244,8 @@ class Battle {
       // A foe wears its own element. Strike it with a different one to react.
       f.aura = d.elem;
       f.auraTurns = 99;
-      if (asc.finalBossGrows && d.tier >= 2 && run.act >= 3) f.add('strength', 3);
+      if (asc.finalBossGrows && d.tier >= 2 && run.act >= 3)
+        f.add('strength', 3);
       if (mods.contains('ashen')) f.add('strength', 3);
       if (mods.contains('warded')) f.block = 12 + run.act * 8;
       if (d.passive == 'colossus') f.awake = false;
@@ -311,7 +317,8 @@ class Battle {
       }
     }
 
-    var n = (first ? asc.firstDraw : 5) -
+    var n =
+        (first ? asc.firstDraw : 5) -
         hero.s('curse') -
         hand.where((c) => c.def.id == 'cu_doubt').length;
     if (has('clock_hand') && hand.isEmpty) n += 2;
@@ -355,13 +362,20 @@ class Battle {
           if (ups.isNotEmpty) {
             final c = rng.pick(ups);
             c.upgraded = false;
-            _say('${_short(f.displayName)} un-edits ${_short(c.name)}', kind: 'foe');
+            _say(
+              '${_short(f.displayName)} un-edits ${_short(c.name)}',
+              kind: 'foe',
+            );
           }
 
         case 'author':
           // The only passive in the game that costs you a card for good.
           final pool = [...hand, ...drawPile, ...discard]
-              .where((c) => c.def.type != CardType.curse && c.def.type != CardType.status)
+              .where(
+                (c) =>
+                    c.def.type != CardType.curse &&
+                    c.def.type != CardType.status,
+              )
               .toList();
           if (pool.isNotEmpty) {
             final c = rng.pick(pool);
@@ -370,8 +384,10 @@ class Battle {
             discard.remove(c);
             run.deck.removeWhere((x) => x.uid == c.uid);
             exhausted.add(c);
-            _say('${_short(f.displayName)} erases ${_short(c.name)} — for good',
-                kind: 'foe');
+            _say(
+              '${_short(f.displayName)} erases ${_short(c.name)} — for good',
+              kind: 'foe',
+            );
           }
 
         case 'devour':
@@ -379,15 +395,20 @@ class Battle {
             final c = rng.pick(discard);
             discard.remove(c);
             exhausted.add(c);
-            _say('${_short(f.displayName)} devours ${_short(c.name)}', kind: 'foe');
+            _say(
+              '${_short(f.displayName)} devours ${_short(c.name)}',
+              kind: 'foe',
+            );
           }
 
         case 'firstvessel':
           if (run.relics.isNotEmpty && turn % 2 == 0) {
             final r = relicDef(rng.pick(run.relics));
             _damage(f, hero, 8, isAttack: false);
-            _say('${_short(f.displayName)} turns ${_short(r.name)} against you',
-                kind: 'foe');
+            _say(
+              '${_short(f.displayName)} turns ${_short(r.name)} against you',
+              kind: 'foe',
+            );
           }
       }
     }
@@ -493,7 +514,10 @@ class Battle {
       }
 
       _act(f);
-      if (f.mods.contains('swift') && f.turnsTaken % 3 == 2 && f.alive && !ended) {
+      if (f.mods.contains('swift') &&
+          f.turnsTaken % 3 == 2 &&
+          f.alive &&
+          !ended) {
         f.patternIdx++;
         _planIntents();
         _say('${f.displayName} is SWIFT — it moves twice.');
@@ -539,7 +563,10 @@ class Battle {
         final every = f.def!.tier >= 2 ? 3 : 4;
         if (f.turnsTaken % every == every - 1) {
           final v = 6 + f.def!.tier * 5;
-          _say('${_short(f.displayName)} breaks over the whole board', kind: 'foe');
+          _say(
+            '${_short(f.displayName)} breaks over the whole board',
+            kind: 'foe',
+          );
           _damage(f, hero, v, isAttack: true, elem: Elem.volt);
           for (final o in foes.where((x) => x.alive && x != f)) {
             _applyStatus(o, 'shock', 1);
@@ -606,35 +633,43 @@ class Battle {
         final hits = it.kind == IntentKind.aoe ? 1 : it.times;
         for (var i = 0; i < hits; i++) {
           if (!f.alive || ended) break;
-          var dmgAmt = it.value;
-          if (f.mods.contains('waning')) dmgAmt = (dmgAmt * 1.5).round();
-          if (asc.foeDamage != 1.0) dmgAmt = (dmgAmt * asc.foeDamage).round();
+          final dmgAmt = _foeAttackRaw(f, it.value);
           _damage(f, hero, dmgAmt, isAttack: true, elem: it.elem);
           if (f.s('bleed') > 0) _hurt(f, f.s('bleed'), 'Bleed');
           if (f.mods.contains('venomous')) _applyStatus(hero, 'poison', 2);
         }
         if (it.status != null) _applyStatus(hero, it.status!, it.statusAmt);
         final took = before - (hero.hp + hero.block);
-        _say([
-          '${_short(who)} → you $took',
-          if (it.status != null)
-            '${kStatus[it.status!]?.name ?? it.status!} ${it.statusAmt}',
-        ].join(' · '), kind: 'foe');
+        _say(
+          [
+            '${_short(who)} → you $took',
+            if (it.status != null)
+              '${kStatus[it.status!]?.name ?? it.status!} ${it.statusAmt}',
+          ].join(' · '),
+          kind: 'foe',
+        );
       case IntentKind.block:
         f.block += it.value;
         _pop(f, '+${it.value}', 'block');
         _say('${_short(who)} guards ${it.value}', kind: 'foe');
-        if (f.def!.passive == 'zeal') f.add('strength', f.def!.tier >= 2 ? 2 : 1);
+        if (f.def!.passive == 'zeal')
+          f.add('strength', f.def!.tier >= 2 ? 2 : 1);
         if (f.def!.passive == 'frostheart') _applyStatus(hero, 'rime', 1);
       case IntentKind.buff:
         f.add(it.status ?? 'strength', it.statusAmt);
         _pop(f, '${it.status ?? 'strength'} +${it.statusAmt}', 'status');
-        _say('${_short(who)} +${it.statusAmt} '
-            '${kStatus[it.status ?? 'strength']?.name ?? 'Strength'}', kind: 'foe');
+        _say(
+          '${_short(who)} +${it.statusAmt} '
+          '${kStatus[it.status ?? 'strength']?.name ?? 'Strength'}',
+          kind: 'foe',
+        );
       case IntentKind.debuff:
         _applyStatus(hero, it.status ?? 'weak', it.statusAmt);
-        _say('${_short(who)} → you ${kStatus[it.status ?? 'weak']?.name ?? 'Weak'} '
-            '${it.statusAmt}', kind: 'foe');
+        _say(
+          '${_short(who)} → you ${kStatus[it.status ?? 'weak']?.name ?? 'Weak'} '
+          '${it.statusAmt}',
+          kind: 'foe',
+        );
       case IntentKind.special:
         _special(f, it);
       case IntentKind.sleep:
@@ -646,8 +681,14 @@ class Battle {
     final id = f.def!.id;
     final before = hero.hp + hero.block;
     if (it.value > 0) {
-      _damage(f, hero, it.value, isAttack: true, elem: f.def!.elem,
-          pierce: id == 'aeonfall');
+      _damage(
+        f,
+        hero,
+        it.value,
+        isAttack: true,
+        elem: f.def!.elem,
+        pierce: id == 'aeonfall',
+      );
     }
     if (it.status != null) _applyStatus(hero, it.status!, it.statusAmt);
     final took = before - (hero.hp + hero.block);
@@ -683,7 +724,9 @@ class Battle {
         final v = 12 + run.act * 8;
         _damage(f, hero, v, isAttack: true);
       case 'reflection_eater':
-        final buffs = hero.st.keys.where((k) => kStatus[k]?.debuff == false).toList();
+        final buffs = hero.st.keys
+            .where((k) => kStatus[k]?.debuff == false)
+            .toList();
         if (buffs.isNotEmpty) {
           hero.clear(rng.pick(buffs));
           _heal(f, 10);
@@ -699,18 +742,24 @@ class Battle {
       default:
         break;
     }
-    _say([
-      '${_short(f.displayName)} ✦',
-      if (it.note != null) _short(it.note!, 26),
-      if (took > 0) '→ you $took',
-      if (it.status != null)
-        '${kStatus[it.status!]?.name ?? it.status!} ${it.statusAmt}',
-    ].join(' '), kind: 'foe');
+    _say(
+      [
+        '${_short(f.displayName)} ✦',
+        if (it.note != null) _short(it.note!, 26),
+        if (took > 0) '→ you $took',
+        if (it.status != null)
+          '${kStatus[it.status!]?.name ?? it.status!} ${it.statusAmt}',
+      ].join(' '),
+      kind: 'foe',
+    );
   }
 
   void _junk(String cardId, int n) {
     for (var i = 0; i < n; i++) {
-      drawPile.insert(rng.nextInt(drawPile.length + 1), CardInst(cardDef(cardId)));
+      drawPile.insert(
+        rng.nextInt(drawPile.length + 1),
+        CardInst(cardDef(cardId)),
+      );
     }
     _say('${cardDef(cardId).name} x$n forced into your deck.');
   }
@@ -724,7 +773,8 @@ class Battle {
 
   int _costOf(CardInst c) {
     var cost = c.cost;
-    if (playedThisTurn == 0 && hand.any((x) => x.def.id == 'cu_silence')) cost += 1;
+    if (playedThisTurn == 0 && hand.any((x) => x.def.id == 'cu_silence'))
+      cost += 1;
     return math.max(0, cost);
   }
 
@@ -735,7 +785,9 @@ class Battle {
     playedThisTurn++;
     if (c.def.elem != Elem.none) elemsThisTurn.add(c.def.elem);
     if (c.def.type == CardType.skill) {
-      for (final f in foes.where((x) => x.alive && x.def!.passive == 'glutton')) {
+      for (final f in foes.where(
+        (x) => x.alive && x.def!.passive == 'glutton',
+      )) {
         _heal(f, 6 + f.def!.tier * 2);
       }
     }
@@ -753,7 +805,8 @@ class Battle {
       repeats++;
       hero.add('echo', -1);
     }
-    if (hero.s('echoloop') > 0 && playedThisTurn <= hero.s('echoloop')) repeats++;
+    if (hero.s('echoloop') > 0 && playedThisTurn <= hero.s('echoloop'))
+      repeats++;
 
     final hpBefore = hero.hp;
     final blockBefore = hero.block;
@@ -774,13 +827,16 @@ class Battle {
     } else if (_hits.length > 1) {
       target = '→ ${_hits.length} foes $_tally';
     }
-    _say([
-      _short(c.name, 18),
-      if (repeats > 1) '×$repeats',
-      if (target != null) target,
-      if (healed > 0) '+$healed HP',
-      if (guarded > 0) '+$guarded Guard',
-    ].join(' '), kind: 'card');
+    _say(
+      [
+        _short(c.name, 18),
+        if (repeats > 1) '×$repeats',
+        if (target != null) target,
+        if (healed > 0) '+$healed HP',
+        if (guarded > 0) '+$guarded Guard',
+      ].join(' '),
+      kind: 'card',
+    );
 
     lastPlayed = c;
     if (c.def.exhaust) {
@@ -826,17 +882,20 @@ class Battle {
     final aid = aidFor(companionId)!;
     aidsUsed.add(companionId);
     run.aidsCalled++;
-    _say('${_short(aid.name, 18)} — ${_short(companionById(companionId).name, 12)}',
-        kind: 'cinematic');
+    _say(
+      '${_short(aid.name, 18)} — ${_short(companionById(companionId).name, 12)}',
+      kind: 'cinematic',
+    );
     _tally = 0;
     _hits.clear();
     _applyFxList(aid.fx, null, source: aid.name);
     if (_hits.isNotEmpty) {
       _say(
-          _hits.length == 1
-              ? '→ ${_short(_hits.keys.first.displayName)} $_tally'
-              : '→ ${_hits.length} foes $_tally',
-          kind: 'cinematic');
+        _hits.length == 1
+            ? '→ ${_short(_hits.keys.first.displayName)} $_tally'
+            : '→ ${_hits.length} foes $_tally',
+        kind: 'cinematic',
+      );
     }
     _checkEnd();
     return true;
@@ -856,10 +915,11 @@ class Battle {
     _applyFxList(p.fx, null, source: p.name);
     if (_hits.isNotEmpty) {
       _say(
-          _hits.length == 1
-              ? '→ ${_short(_hits.keys.first.displayName)} $_tally'
-              : '→ ${_hits.length} foes $_tally',
-          kind: 'card');
+        _hits.length == 1
+            ? '→ ${_short(_hits.keys.first.displayName)} $_tally'
+            : '→ ${_hits.length} foes $_tally',
+        kind: 'card',
+      );
     }
     _checkEnd();
     return true;
@@ -1015,7 +1075,14 @@ class Battle {
               : targets;
           for (final t in ts) {
             if (t.alive) {
-              _damage(hero, t, fx.value, isAttack: true, elem: elem, multi: fx.times > 1);
+              _damage(
+                hero,
+                t,
+                fx.value,
+                isAttack: true,
+                elem: elem,
+                multi: fx.times > 1,
+              );
             }
           }
         }
@@ -1045,7 +1112,10 @@ class Battle {
         _applyStatus(hero, fx.arg!, fx.value);
       case FxKind.aura:
       case FxKind.auraAll:
-        final e = Elem.values.firstWhere((x) => x.name == fx.arg, orElse: () => Elem.none);
+        final e = Elem.values.firstWhere(
+          (x) => x.name == fx.arg,
+          orElse: () => Elem.none,
+        );
         for (final t in targets) {
           _paint(t, e);
         }
@@ -1059,7 +1129,13 @@ class Battle {
         }
       case FxKind.damageScaled:
         for (final t in targets) {
-          _damage(hero, t, fx.value + t.s(fx.arg!) * fx.times, isAttack: true, elem: elem);
+          _damage(
+            hero,
+            t,
+            fx.value + t.s(fx.arg!) * fx.times,
+            isAttack: true,
+            elem: elem,
+          );
         }
       case FxKind.doubleStatus:
         for (final t in targets) {
@@ -1078,21 +1154,44 @@ class Battle {
         if (total > 0) _heal(hero, total);
       case FxKind.scaleDamageByBlock:
         for (final t in targets) {
-          _damage(hero, t, fx.value + (hero.block * fx.times ~/ 100),
-              isAttack: true, elem: elem);
+          _damage(
+            hero,
+            t,
+            fx.value + (hero.block * fx.times ~/ 100),
+            isAttack: true,
+            elem: elem,
+          );
         }
       case FxKind.damageEqualBlock:
         for (final t in targets) {
-          _damage(hero, t, hero.block * fx.value ~/ 100, isAttack: true, elem: elem);
+          _damage(
+            hero,
+            t,
+            hero.block * fx.value ~/ 100,
+            isAttack: true,
+            elem: elem,
+          );
         }
       case FxKind.scaleDamageByDebuffs:
         for (final t in targets) {
           final n = t.st.keys.where((k) => kStatus[k]?.debuff == true).length;
-          _damage(hero, t, fx.value * math.max(1, n), isAttack: true, elem: elem);
+          _damage(
+            hero,
+            t,
+            fx.value * math.max(1, n),
+            isAttack: true,
+            elem: elem,
+          );
         }
       case FxKind.scaleDamageByHandSize:
         for (final t in targets) {
-          _damage(hero, t, fx.value + hand.length * fx.times, isAttack: true, elem: elem);
+          _damage(
+            hero,
+            t,
+            fx.value + hand.length * fx.times,
+            isAttack: true,
+            elem: elem,
+          );
         }
       case FxKind.damagePerPlayed:
         final mult = math.max(1, playedThisTurn - 1);
@@ -1104,7 +1203,9 @@ class Battle {
           if (kStatus[k]?.debuff == true) hero.clear(k);
         }
       case FxKind.cleanseOne:
-        final debuffs = hero.st.keys.where((k) => kStatus[k]?.debuff == true).toList();
+        final debuffs = hero.st.keys
+            .where((k) => kStatus[k]?.debuff == true)
+            .toList();
         for (var i = 0; i < math.max(1, fx.value) && i < debuffs.length; i++) {
           hero.clear(debuffs[i]);
         }
@@ -1170,11 +1271,15 @@ class Battle {
   ///
   /// Both the real hit and the on-screen forecast go through this, so the
   /// preview cannot drift out of step with what the swing does.
-  int projectedHit(Combatant src, Combatant dst, int raw,
-      {bool isAttack = true,
-      Elem elem = Elem.none,
-      bool multi = false,
-      int? momentum}) {
+  int projectedHit(
+    Combatant src,
+    Combatant dst,
+    int raw, {
+    bool isAttack = true,
+    Elem elem = Elem.none,
+    bool multi = false,
+    int? momentum,
+  }) {
     var v = raw.toDouble();
 
     if (isAttack) v += src.s('strength');
@@ -1191,7 +1296,8 @@ class Battle {
     if (isAttack && dst.s('vulnerable') > 0) v *= 1.4;
     if (dst.s('rime') > 0) v *= 1.3;
     if (dst.s('overcharge') > 0) v *= 1.25;
-    if (!dst.isPlayer && dst.def!.passive == 'pity' && dst.hp * 2 > dst.maxHp) v *= .5;
+    if (!dst.isPlayer && dst.def!.passive == 'pity' && dst.hp * 2 > dst.maxHp)
+      v *= .5;
     if (!dst.isPlayer && dst.mods.contains('hollow')) v *= .9;
     if (!dst.isPlayer && dst.def!.passive == 'swarm' && raw >= 15) v *= .7;
     if (!dst.isPlayer && dst.def!.passive == 'bulwark' && multi) v *= .6;
@@ -1215,7 +1321,8 @@ class Battle {
   int? previewDamage(CardInst c, Combatant f) {
     if (!f.alive) return null;
     if (f.phasedOut) return null;
-    if (f.def!.passive == 'shroud' && foes.any((x) => x.alive && x != f)) return null;
+    if (f.def!.passive == 'shroud' && foes.any((x) => x.alive && x != f))
+      return null;
 
     var total = 0;
     var guard = f.block;
@@ -1223,8 +1330,14 @@ class Battle {
     // the forecast may count it.
     var momentum = hero.s('momentum');
     int hit(int raw, {bool multi = false}) {
-      final v = projectedHit(hero, f, raw,
-          elem: c.def.elem, multi: multi, momentum: momentum);
+      final v = projectedHit(
+        hero,
+        f,
+        raw,
+        elem: c.def.elem,
+        multi: multi,
+        momentum: momentum,
+      );
       momentum = 0;
       return v;
     }
@@ -1267,7 +1380,8 @@ class Battle {
         case FxKind.scaleDamageByBlock:
           land(fx.value + (hero.block * fx.times ~/ 100));
         case FxKind.scaleDamageByHandSize:
-          land(fx.value + hand.length * fx.times);
+          final otherFrames = hand.length - (hand.contains(c) ? 1 : 0);
+          land(fx.value + otherFrames * fx.times);
         default:
           // Anything else either does no damage or depends on how the rest of
           // the turn plays out, and is deliberately left out of the promise.
@@ -1277,8 +1391,15 @@ class Battle {
     return total > 0 ? total : null;
   }
 
-  int _damage(Combatant src, Combatant dst, int raw,
-      {bool isAttack = true, bool pierce = false, Elem elem = Elem.none, bool multi = false}) {
+  int _damage(
+    Combatant src,
+    Combatant dst,
+    int raw, {
+    bool isAttack = true,
+    bool pierce = false,
+    Elem elem = Elem.none,
+    bool multi = false,
+  }) {
     if (raw <= 0 || !dst.alive) return 0;
 
     // Two foes refuse damage outright rather than reducing it. Both are meant
@@ -1298,8 +1419,15 @@ class Battle {
     final momentum = src.s('momentum');
     if (momentum > 0) src.clear('momentum');
 
-    var amount = projectedHit(src, dst, raw,
-        isAttack: isAttack, elem: elem, multi: multi, momentum: momentum);
+    var amount = projectedHit(
+      src,
+      dst,
+      raw,
+      isAttack: isAttack,
+      elem: elem,
+      multi: multi,
+      momentum: momentum,
+    );
 
     if (dst.isPlayer && dst.s('ward') > 0 && isAttack) {
       dst.add('ward', -1);
@@ -1353,7 +1481,8 @@ class Battle {
       src.hp -= dst.s('thorns');
       _pop(src, '-${dst.s('thorns')}', 'damage');
     }
-    if (!dst.isPlayer && (dst.mods.contains('mirrored') || dst.def!.passive == 'mirror')) {
+    if (!dst.isPlayer &&
+        (dst.mods.contains('mirrored') || dst.def!.passive == 'mirror')) {
       final back = (amount * (dst.def!.passive == 'mirror' ? .3 : .2)).round();
       if (back > 0 && src.isPlayer) {
         hero.hp -= back;
@@ -1365,7 +1494,10 @@ class Battle {
       if (dst.def!.passive == 'enrage') dst.add('strength', 2);
     }
     if (!dst.isPlayer && dst.def!.passive == 'leech') _heal(dst, amount ~/ 2);
-    if (!dst.isPlayer && dst.def!.passive == 'kintsugi' && dst.hp * 2 < dst.maxHp && !dst.phaseTwo) {
+    if (!dst.isPlayer &&
+        dst.def!.passive == 'kintsugi' &&
+        dst.hp * 2 < dst.maxHp &&
+        !dst.phaseTwo) {
       dst.phaseTwo = true;
       _heal(dst, 18);
     }
@@ -1388,7 +1520,10 @@ class Battle {
     } else if (has('mirror_coin') && !run.mirrorCoinUsed) {
       run.mirrorCoinUsed = true;
       hero.hp = 1;
-      _say('The Mirror Coin lands on its edge. You live at 1 HP.', kind: 'cinematic');
+      _say(
+        'The Mirror Coin lands on its edge. You live at 1 HP.',
+        kind: 'cinematic',
+      );
     }
   }
 
@@ -1477,7 +1612,9 @@ class Battle {
         _applyStatus(t, 'decay', 3);
         _damage(hero, t, scale + bonus, isAttack: false);
       case 'purge':
-        final buffs = t.st.keys.where((k) => kStatus[k]?.debuff == false).toList();
+        final buffs = t.st.keys
+            .where((k) => kStatus[k]?.debuff == false)
+            .toList();
         for (final b in buffs) {
           t.clear(b);
         }
@@ -1533,7 +1670,8 @@ class Battle {
       v += hero.s('wildfire');
       if (has('ember_coin')) v += 1;
     }
-    if (key == 'poison' && !t.isPlayer && t.def!.passive == 'unfinished') return;
+    if (key == 'poison' && !t.isPlayer && t.def!.passive == 'unfinished')
+      return;
     if (key == 'shock' && has('storm_shard')) v += 1;
     t.add(key, v);
     _pop(t, '${kStatus[key]?.name ?? key} +$v', 'status');
@@ -1562,7 +1700,8 @@ class Battle {
     if (t.isPlayer && has('ouroboros_true')) return;
     var amt = v;
     // A parasite on the board makes every heal you own worth half.
-    if (t.isPlayer && foes.any((f) => f.alive && f.def!.passive == 'parasite')) {
+    if (t.isPlayer &&
+        foes.any((f) => f.alive && f.def!.passive == 'parasite')) {
       amt = math.max(1, amt ~/ 2);
     }
     if (t.isPlayer && t.s('radiance') > 0) amt = (amt * 1.5).round();
@@ -1575,9 +1714,12 @@ class Battle {
       if (hero.s('crown') > 0) {
         final live = foes.where((f) => f.alive).toList();
         if (live.isNotEmpty) {
-          _damage(hero, rng.pick(live),
-              hero.s('crown') >= 2 ? (done * 1.5).round() : done,
-              isAttack: false);
+          _damage(
+            hero,
+            rng.pick(live),
+            hero.s('crown') >= 2 ? (done * 1.5).round() : done,
+            isAttack: false,
+          );
         }
       }
     }
@@ -1638,7 +1780,15 @@ class Battle {
     // Ticking it here removed it at exactly the moment it was meant to work,
     // so Stealth never once did anything. It is cleared at the top of your
     // next turn instead, in _beginTurn.
-    for (final k in ['rime', 'vulnerable', 'weak', 'radiance', 'overcharge', 'silence', 'entangle']) {
+    for (final k in [
+      'rime',
+      'vulnerable',
+      'weak',
+      'radiance',
+      'overcharge',
+      'silence',
+      'entangle',
+    ]) {
       if (t.s(k) > 0) t.add(k, -1);
     }
     if (t.auraTurns > 0) {
@@ -1703,6 +1853,43 @@ class Battle {
   }
 
   // ------------------------------------------------------------- forecast
+  /// Scaling happens before Strength, with rounding at each difficulty step.
+  /// Execution and intent previews must not implement that order separately.
+  int _foeAttackRaw(Combatant f, int raw) {
+    var amount = raw;
+    if (f.mods.contains('waning')) amount = (amount * 1.5).round();
+    if (asc.foeDamage != 1.0) amount = (amount * asc.foeDamage).round();
+    return amount;
+  }
+
+  /// Ordered, side-effect-free hits of the currently telegraphed intent.
+  /// Special actions retain their existing unscaled damage rule.
+  List<int> _incomingHits(Combatant f) {
+    if (!f.alive || !f.awake || f.s('frozen') > 0) return const [];
+    final it = f.intent;
+    if (it == null) return const [];
+    final attacking =
+        it.kind == IntentKind.attack ||
+        it.kind == IntentKind.attackMulti ||
+        it.kind == IntentKind.aoe;
+    if (!attacking && it.kind != IntentKind.special) return const [];
+    final raw = attacking ? _foeAttackRaw(f, it.value) : it.value;
+    if (raw <= 0) return const [];
+    final hits = it.kind == IntentKind.aoe || it.kind == IntentKind.special
+        ? 1
+        : it.times;
+    return [
+      for (var i = 0; i < hits; i++)
+        projectedHit(
+          f,
+          hero,
+          raw,
+          elem: attacking ? it.elem : f.def!.elem,
+          momentum: i == 0 ? f.s('momentum') : 0,
+        ),
+    ];
+  }
+
   /// One row of the combat readout: exactly what this foe will do, with the
   /// arithmetic already done.
   List<FoeIntentInfo> intentInfos() {
@@ -1712,36 +1899,49 @@ class Battle {
       final name = f.displayName;
 
       if (f.s('frozen') > 0) {
-        out.add(FoeIntentInfo(name: name, kind: IntentKind.sleep, note: 'frozen — loses its turn'));
+        out.add(
+          FoeIntentInfo(
+            name: name,
+            kind: IntentKind.sleep,
+            note: 'frozen — loses its turn',
+          ),
+        );
         continue;
       }
       if (!f.awake) {
-        out.add(FoeIntentInfo(name: name, kind: IntentKind.sleep, note: 'dormant'));
+        out.add(
+          FoeIntentInfo(name: name, kind: IntentKind.sleep, note: 'dormant'),
+        );
         continue;
       }
       final it = f.intent;
       if (it == null) continue;
 
       final total = incomingFrom(f);
-      final times = it.kind == IntentKind.attackMulti ? it.times : 1;
+      final times =
+          it.kind == IntentKind.attack || it.kind == IntentKind.attackMulti
+          ? it.times
+          : 1;
       final perHit = times > 1 ? (total / times).round() : total;
       final rider = (it.status != null && it.statusAmt > 0)
           ? '${kStatus[it.status!]?.name ?? it.status!} ${it.statusAmt}'
           : null;
 
-      out.add(FoeIntentInfo(
-        name: name,
-        kind: it.kind,
-        perHit: perHit,
-        times: times,
-        total: total,
-        guard: it.kind == IntentKind.block ? it.value : 0,
-        rider: rider,
-        note: it.kind == IntentKind.special ? it.note : null,
-        buff: it.kind == IntentKind.buff
-            ? '${kStatus[it.status ?? 'strength']?.name ?? 'Strength'} +${it.statusAmt}'
-            : null,
-      ));
+      out.add(
+        FoeIntentInfo(
+          name: name,
+          kind: it.kind,
+          perHit: perHit,
+          times: times,
+          total: total,
+          guard: it.kind == IntentKind.block ? it.value : 0,
+          rider: rider,
+          note: it.kind == IntentKind.special ? it.note : null,
+          buff: it.kind == IntentKind.buff
+              ? '${kStatus[it.status ?? 'strength']?.name ?? 'Strength'} +${it.statusAmt}'
+              : null,
+        ),
+      );
     }
     return out;
   }
@@ -1750,47 +1950,31 @@ class Battle {
   /// Weak, Vulnerable and its own modifiers. This is the number the player
   /// needs to make every decision, so the UI shows it rather than the raw one.
   int incomingFrom(Combatant f) {
-    if (!f.alive || !f.awake || f.s('frozen') > 0) return 0;
-    final it = f.intent;
-    if (it == null) return 0;
-    if (it.kind != IntentKind.attack &&
-        it.kind != IntentKind.attackMulti &&
-        !(it.kind == IntentKind.special && it.value > 0)) {
-      return 0;
-    }
-    var per = it.value.toDouble() + f.s('strength');
-    if (f.mods.contains('waning')) per *= 1.5;
-    if (f.s('weak') > 0) per *= .75;
-    if (f.s('overcharge') > 0) per *= 1.5;
-    if (hero.s('vulnerable') > 0) per *= 1.4;
-    if (hero.s('rime') > 0) per *= 1.3;
-    if (hero.s('overcharge') > 0) per *= 1.25;
-    final hits = it.kind == IntentKind.special ? 1 : it.times;
-    return (per < 1 ? 1 : per).round() * hits;
+    return _incomingHits(f).fold(0, (sum, hit) => sum + hit);
   }
 
   /// Total telegraphed damage this turn across every foe.
-  int get incomingTotal =>
-      foes.fold(0, (sum, f) => sum + incomingFrom(f));
+  int get incomingTotal => foes.fold(0, (sum, f) => sum + incomingFrom(f));
 
   /// How much of [incomingTotal] your Guard will actually stop. Multi-hit
   /// attacks chew through Guard hit by hit, so this is an honest simulation
   /// rather than a simple subtraction.
   int get incomingAfterGuard {
-    if (hero.s('ward') > 0) return 0;
     var guard = hero.block;
+    var ward = hero.s('ward');
     var through = 0;
     for (final f in foes) {
-      if (!f.alive) continue;
-      final total = incomingFrom(f);
-      if (total <= 0) continue;
-      final it = f.intent!;
-      final hits = it.kind == IntentKind.attackMulti ? it.times : 1;
-      final per = (total / hits).round();
-      for (var i = 0; i < hits; i++) {
-        final absorbed = per < guard ? per : guard;
+      final pierces =
+          f.intent?.kind == IntentKind.special && f.def?.id == 'aeonfall';
+      for (final hit in _incomingHits(f)) {
+        if (ward > 0) {
+          ward--;
+          continue;
+        }
+        if (hero.s('stealth') > 0) continue;
+        final absorbed = pierces ? 0 : math.min(hit, guard);
         guard -= absorbed;
-        through += per - absorbed;
+        through += hit - absorbed;
       }
     }
     return through;
