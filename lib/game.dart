@@ -53,6 +53,7 @@ class Game extends ChangeNotifier {
       _prefs!.remove(_kRun);
     }
     if (!_storageReady.isCompleted) _storageReady.complete();
+    _syncArchive();
     Audio.i.musicOn = meta.music;
     Audio.i.sfxOn = meta.sfx;
     await Audio.i.init();
@@ -80,7 +81,14 @@ class Game extends ChangeNotifier {
 
   // ------------------------------------------------------------ saving
   void saveMeta() {
+    _syncArchive();
     _prefs?.setString(_kMeta, meta.encode());
+  }
+
+  /// Archive applies to future rewards even when bought during a live run.
+  /// Older saves did not record it, so restore it from permanent progress too.
+  void _syncArchive() {
+    if (meta.extraCardChoice && run != null) run!.extraCardChoice = true;
   }
 
   /// Purchase delivery can arrive before boot has loaded the saved metadata.

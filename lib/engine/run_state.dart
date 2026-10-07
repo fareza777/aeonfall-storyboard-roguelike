@@ -47,6 +47,7 @@ class RunState {
   late List<String> relics;
   StoryMap? map;
   PendingReward? pendingReward;
+  bool extraCardChoice = false;
 
   bool get canClaimReward {
     final reward = pendingReward;
@@ -227,6 +228,7 @@ class RunState {
     'seed': seed,
     'vessel': vesselId,
     'asc': ascension,
+    'extraCardChoice': extraCardChoice,
     'hp': hp,
     'maxHp': maxHp,
     'gold': gold,
@@ -261,6 +263,7 @@ class RunState {
       j['asc'] as int? ?? 0,
     );
     r.rng = Rng(r.seed);
+    r.extraCardChoice = j['extraCardChoice'] == true;
     r.hp = j['hp'];
     r.maxHp = j['maxHp'];
     r.gold = j['gold'];

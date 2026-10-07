@@ -30,6 +30,7 @@ class Director {
   // -------------------------------------------------------- run setup
   static RunState newRun(int seed, String vesselId, MetaState meta) {
     final run = RunState(seed: seed, vesselId: vesselId, ascension: meta.ascension);
+    run.extraCardChoice = meta.extraCardChoice;
     final asc = AscensionRules(meta.ascension);
     run.maxHp += meta.bonusHp - asc.startingMaxHpPenalty;
     if (run.maxHp < 20) run.maxHp = 20;
@@ -335,6 +336,7 @@ class Director {
     final r = _r.fork('rw-${run.act}-${run.totalFloors}');
     final pool = rewardPoolFor(run.vesselId);
     final n = (count ?? asc.cardRewardCount) +
+        (run.extraCardChoice ? 1 : 0) +
         (run.relics.contains('marrow_die') ? 1 : 0);
     final out = <CardDef>[];
     var guard = 0;
