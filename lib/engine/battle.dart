@@ -11,6 +11,16 @@ import 'core.dart';
 import 'rng.dart';
 import 'run_state.dart';
 
+const _endTurnStatuses = [
+  'rime',
+  'vulnerable',
+  'weak',
+  'radiance',
+  'overcharge',
+  'silence',
+  'entangle',
+];
+
 /// One participant in a fight.
 class Combatant {
   Combatant.hero(this.name, this.hp, this.maxHp)
@@ -75,6 +85,7 @@ class FoeIntentInfo {
     this.perHit = 0,
     this.times = 1,
     this.total = 0,
+    this.hitValues = const [],
     this.guard = 0,
     this.rider,
     this.note,
@@ -84,11 +95,20 @@ class FoeIntentInfo {
   final String name;
   final IntentKind kind;
 
-  /// Damage per hit, after every modifier on both sides.
+  /// The first hit, after every modifier on both sides. Later hits may differ.
   final int perHit;
   final int times;
   final int total;
+  final List<int> hitValues;
   final int guard;
+
+  String get damageLabel {
+    if (hitValues.length <= 1) return '$total';
+    if (hitValues.every((hit) => hit == hitValues.first)) {
+      return '${hitValues.first} ×${hitValues.length} = $total';
+    }
+    return '${hitValues.join(' + ')} = $total';
+  }
 
   /// e.g. "Rime 3" — a condition the attack also applies.
   final String? rider;
@@ -244,8 +264,9 @@ class Battle {
       // A foe wears its own element. Strike it with a different one to react.
       f.aura = d.elem;
       f.auraTurns = 99;
-      if (asc.finalBossGrows && d.tier >= 2 && run.act >= 3)
+      if (asc.finalBossGrows && d.tier >= 2 && run.act >= 3) {
         f.add('strength', 3);
+      }
       if (mods.contains('ashen')) f.add('strength', 3);
       if (mods.contains('warded')) f.block = 12 + run.act * 8;
       if (d.passive == 'colossus') f.awake = false;
@@ -652,8 +673,9 @@ class Battle {
         f.block += it.value;
         _pop(f, '+${it.value}', 'block');
         _say('${_short(who)} guards ${it.value}', kind: 'foe');
-        if (f.def!.passive == 'zeal')
+        if (f.def!.passive == 'zeal') {
           f.add('strength', f.def!.tier >= 2 ? 2 : 1);
+        }
         if (f.def!.passive == 'frostheart') _applyStatus(hero, 'rime', 1);
       case IntentKind.buff:
         f.add(it.status ?? 'strength', it.statusAmt);
@@ -721,7 +743,7 @@ class Battle {
       case 'mirrorlord_ascendant':
       case 'first_vessel':
       case 'paradox_echo':
-        final v = 12 + run.act * 8;
+        final v = _mirrorStrikeRaw(f);
         _damage(f, hero, v, isAttack: true);
       case 'reflection_eater':
         final buffs = hero.st.keys
@@ -773,8 +795,9 @@ class Battle {
 
   int _costOf(CardInst c) {
     var cost = c.cost;
-    if (playedThisTurn == 0 && hand.any((x) => x.def.id == 'cu_silence'))
+    if (playedThisTurn == 0 && hand.any((x) => x.def.id == 'cu_silence')) {
       cost += 1;
+    }
     return math.max(0, cost);
   }
 
@@ -805,8 +828,9 @@ class Battle {
       repeats++;
       hero.add('echo', -1);
     }
-    if (hero.s('echoloop') > 0 && playedThisTurn <= hero.s('echoloop'))
+    if (hero.s('echoloop') > 0 && playedThisTurn <= hero.s('echoloop')) {
       repeats++;
+    }
 
     final hpBefore = hero.hp;
     final blockBefore = hero.block;
@@ -1296,8 +1320,9 @@ class Battle {
     if (isAttack && dst.s('vulnerable') > 0) v *= 1.4;
     if (dst.s('rime') > 0) v *= 1.3;
     if (dst.s('overcharge') > 0) v *= 1.25;
-    if (!dst.isPlayer && dst.def!.passive == 'pity' && dst.hp * 2 > dst.maxHp)
+    if (!dst.isPlayer && dst.def!.passive == 'pity' && dst.hp * 2 > dst.maxHp) {
       v *= .5;
+    }
     if (!dst.isPlayer && dst.mods.contains('hollow')) v *= .9;
     if (!dst.isPlayer && dst.def!.passive == 'swarm' && raw >= 15) v *= .7;
     if (!dst.isPlayer && dst.def!.passive == 'bulwark' && multi) v *= .6;
@@ -1321,8 +1346,9 @@ class Battle {
   int? previewDamage(CardInst c, Combatant f) {
     if (!f.alive) return null;
     if (f.phasedOut) return null;
-    if (f.def!.passive == 'shroud' && foes.any((x) => x.alive && x != f))
+    if (f.def!.passive == 'shroud' && foes.any((x) => x.alive && x != f)) {
       return null;
+    }
 
     var total = 0;
     var guard = f.block;
@@ -1670,8 +1696,9 @@ class Battle {
       v += hero.s('wildfire');
       if (has('ember_coin')) v += 1;
     }
-    if (key == 'poison' && !t.isPlayer && t.def!.passive == 'unfinished')
+    if (key == 'poison' && !t.isPlayer && t.def!.passive == 'unfinished') {
       return;
+    }
     if (key == 'shock' && has('storm_shard')) v += 1;
     t.add(key, v);
     _pop(t, '${kStatus[key]?.name ?? key} +$v', 'status');
@@ -1780,15 +1807,7 @@ class Battle {
     // Ticking it here removed it at exactly the moment it was meant to work,
     // so Stealth never once did anything. It is cleared at the top of your
     // next turn instead, in _beginTurn.
-    for (final k in [
-      'rime',
-      'vulnerable',
-      'weak',
-      'radiance',
-      'overcharge',
-      'silence',
-      'entangle',
-    ]) {
+    for (final k in _endTurnStatuses) {
       if (t.s(k) > 0) t.add(k, -1);
     }
     if (t.auraTurns > 0) {
@@ -1862,6 +1881,28 @@ class Battle {
     return amount;
   }
 
+  int _mirrorStrikeRaw(Combatant f) => switch (f.def?.id) {
+    'mirror_twin' ||
+    'mirrorlord_vane' ||
+    'mirrorlord_ascendant' ||
+    'first_vessel' ||
+    'paradox_echo' => 12 + run.act * 8,
+    _ => 0,
+  };
+
+  Combatant _forecastHero() {
+    final target = Combatant.hero(hero.name, hero.hp, hero.maxHp)
+      ..st.addAll(hero.st);
+    // The hero's end-of-turn expires these before foes act. During an
+    // already-started foe phase they have ticked, so never tick them twice.
+    if (!inFoePhase) {
+      for (final status in _endTurnStatuses) {
+        if (target.s(status) > 0) target.add(status, -1);
+      }
+    }
+    return target;
+  }
+
   /// Ordered, side-effect-free hits of the currently telegraphed intent.
   /// Special actions retain their existing unscaled damage rule.
   List<int> _incomingHits(Combatant f) {
@@ -1873,21 +1914,30 @@ class Battle {
         it.kind == IntentKind.attackMulti ||
         it.kind == IntentKind.aoe;
     if (!attacking && it.kind != IntentKind.special) return const [];
-    final raw = attacking ? _foeAttackRaw(f, it.value) : it.value;
-    if (raw <= 0) return const [];
-    final hits = it.kind == IntentKind.aoe || it.kind == IntentKind.special
-        ? 1
-        : it.times;
-    return [
-      for (var i = 0; i < hits; i++)
-        projectedHit(
-          f,
-          hero,
-          raw,
-          elem: attacking ? it.elem : f.def!.elem,
-          momentum: i == 0 ? f.s('momentum') : 0,
-        ),
-    ];
+    final target = _forecastHero();
+    var momentum = f.s('momentum');
+    final hits = <int>[];
+    void hit(int raw, Elem elem) {
+      if (raw <= 0) return;
+      hits.add(projectedHit(f, target, raw, elem: elem, momentum: momentum));
+      momentum = 0;
+    }
+
+    if (attacking) {
+      final count = it.kind == IntentKind.aoe ? 1 : it.times;
+      var attackerHp = f.hp;
+      for (var i = 0; i < count && attackerHp > 0; i++) {
+        hit(_foeAttackRaw(f, it.value), it.elem);
+        // Execution applies Bleed after each swing, even a warded swing.
+        attackerHp -= f.s('bleed');
+      }
+    } else {
+      hit(it.value, f.def!.elem);
+      // The special rider precedes Mirror's additional, unscaled strike.
+      if (it.status != null) target.add(it.status!, it.statusAmt);
+      hit(_mirrorStrikeRaw(f), Elem.none);
+    }
+    return hits;
   }
 
   /// One row of the combat readout: exactly what this foe will do, with the
@@ -1917,12 +1967,10 @@ class Battle {
       final it = f.intent;
       if (it == null) continue;
 
-      final total = incomingFrom(f);
-      final times =
-          it.kind == IntentKind.attack || it.kind == IntentKind.attackMulti
-          ? it.times
-          : 1;
-      final perHit = times > 1 ? (total / times).round() : total;
+      final hits = _incomingHits(f);
+      final total = hits.fold(0, (sum, hit) => sum + hit);
+      final times = math.max(1, hits.length);
+      final perHit = hits.isEmpty ? 0 : hits.first;
       final rider = (it.status != null && it.statusAmt > 0)
           ? '${kStatus[it.status!]?.name ?? it.status!} ${it.statusAmt}'
           : null;
@@ -1934,6 +1982,7 @@ class Battle {
           perHit: perHit,
           times: times,
           total: total,
+          hitValues: List.unmodifiable(hits),
           guard: it.kind == IntentKind.block ? it.value : 0,
           rider: rider,
           note: it.kind == IntentKind.special ? it.note : null,

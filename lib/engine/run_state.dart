@@ -72,8 +72,9 @@ class RunState {
     if (!canClaimReward ||
         !pendingReward!.cards ||
         pendingReward!.bonusTaken ||
-        amount <= 0)
+        amount <= 0) {
       return false;
+    }
     pendingReward!.bonusTaken = true;
     gold += amount;
     return true;
@@ -83,8 +84,9 @@ class RunState {
     if (!canClaimReward ||
         !pendingReward!.cards ||
         pendingReward!.cardTaken ||
-        !pendingReward!.cardIds.contains(id))
+        !pendingReward!.cardIds.contains(id)) {
       return false;
+    }
     pendingReward!.cardTaken = true;
     addCard(id);
     return true;
@@ -94,8 +96,9 @@ class RunState {
     if (!canClaimReward) return false;
     final reward = pendingReward!;
     final id = extra ? reward.extraRelicId : reward.relicId;
-    if (id == null || (extra ? reward.extraTaken : reward.relicTaken))
+    if (id == null || (extra ? reward.extraTaken : reward.relicTaken)) {
       return false;
+    }
     if (extra) {
       reward.extraTaken = true;
     } else {

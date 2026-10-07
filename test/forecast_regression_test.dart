@@ -122,10 +122,85 @@ void main() {
     );
     b.foes.first.add('momentum', 2);
     expect(b.incomingFrom(b.foes.first), 24); // 14 + 10
+    expect(b.intentInfos().single.perHit, 14);
+    expect(b.intentInfos().single.damageLabel, '14 + 10 = 24');
     expect(b.incomingAfterGuard, 24);
     expect(b.foes.first.s('momentum'), 2);
     expect(act(b), 24);
   });
+
+  test('Mirror special consumes Ward before the next foe attacks', () {
+    final b = fight();
+    b.run.act = 2;
+    b.foes[0] = Combatant.foe(enemyDef('mirror_twin'), 100, 100, const [])
+      ..intent = const Intent(IntentKind.special);
+    b.foes.add(
+      Combatant.foe(enemyDef('cinder_wretch'), 100, 100, const [])
+        ..intent = const Intent(IntentKind.attack, value: 10),
+    );
+    b.hero.add('ward', 1);
+    expect(b.incomingFrom(b.foes.first), 28);
+    expect(b.incomingAfterGuard, 10);
+    expect(act(b), 10);
+  });
+
+  test('Mirror special forecasts both hits, consuming Momentum only once', () {
+    final b = fight();
+    b.run.act = 2;
+    b.foes[0] = Combatant.foe(enemyDef('mirror_twin'), 100, 100, const [])
+      ..intent = const Intent(IntentKind.special, value: 5)
+      ..add('momentum', 2);
+    b.hero.add('ward', 1);
+    expect(b.incomingFrom(b.foes.first), 37); // 9 + 28
+    expect(b.incomingAfterGuard, 28);
+    expect(act(b), 28);
+  });
+
+  for (final status in ['vulnerable', 'rime', 'overcharge']) {
+    test('$status expires before the forecasted foe phase', () {
+      final b = fight();
+      b.foes.first.intent = const Intent(
+        IntentKind.attackMulti,
+        value: 10,
+        times: 3,
+      );
+      b.hero.add(status, 1);
+      b.hero.add('ward', 1);
+      expect(b.incomingAfterGuard, 20);
+      expect(b.hero.s(status), 1); // Reading must not expire the real status.
+      expect(act(b), 20);
+    });
+  }
+
+  test('A forecast during the foe phase does not expire statuses twice', () {
+    final b = fight();
+    b.hero.add('vulnerable', 2);
+    b.foes.first.intent = const Intent(IntentKind.attack, value: 10);
+    b.endPlayerTurn();
+    expect(b.hero.s('vulnerable'), 1);
+    expect(b.incomingAfterGuard, 14);
+    final before = b.hero.hp;
+    while (b.stepFoes()) {}
+    expect(before - b.hero.hp, 14);
+  });
+
+  for (final fixture in [(3, 0), (6, 10), (9, 20)]) {
+    test('Bleed stops a multi-hit attacker at ${fixture.$1} HP', () {
+      final b = fight();
+      b.foes.first.hp = fixture.$1;
+      b.foes.first.add('bleed', 3);
+      b.foes.first.intent = const Intent(
+        IntentKind.attackMulti,
+        value: 10,
+        times: 3,
+      );
+      b.hero.add('ward', 1);
+      expect(b.incomingAfterGuard, fixture.$2);
+      expect(b.foes.first.hp, fixture.$1);
+      expect(b.foes.first.s('bleed'), 3);
+      expect(act(b), fixture.$2);
+    });
+  }
 
   test('Reading a forecast never consumes Ward, Guard or battle RNG', () {
     final b = fight();

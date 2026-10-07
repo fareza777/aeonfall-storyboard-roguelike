@@ -1091,7 +1091,7 @@ class _BattleScreenState extends State<BattleScreen> with TickerProviderStateMix
       IntentKind.attack || IntentKind.attackMulti => (
           '⚔',
           Ae.blood,
-          i.times > 1 ? '${i.perHit} ×${i.times} = ${i.total}' : '${i.total}',
+          i.damageLabel,
         ),
       IntentKind.block => ('⛨', Ae.frost, 'guards ${i.guard}'),
       IntentKind.buff => ('▲', Ae.gold, i.buff ?? 'empowers'),
